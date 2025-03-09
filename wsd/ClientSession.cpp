@@ -44,6 +44,7 @@
 #include <wsd/TileDesc.hpp>
 #include <net/HttpHelper.hpp>
 #include <wopi/StorageConnectionManager.hpp>
+#include <remote/RController.hpp>
 
 using namespace COOLProtocol;
 
@@ -532,6 +533,8 @@ bool ClientSession::handleSignatureAction(const StringVector& tokens)
 bool ClientSession::_handleInput(const char *buffer, int length)
 {
     LOG_TRC("handling incoming [" << getAbbreviatedMessage(buffer, length) << ']');
+    std::cout << "handling incoming [" << getAbbreviatedMessage(buffer, length) << ']' << std::endl;
+
     const std::string firstLine = getFirstLine(buffer, length);
     const StringVector tokens = StringVector::tokenize(firstLine.data(), firstLine.size());
 
@@ -1311,6 +1314,20 @@ bool ClientSession::_handleInput(const char *buffer, int length)
             if (tokens.equals(1, ".uno:PrepareSignature") || tokens.equals(1, ".uno:DownloadSignature"))
             {
                 return handleSignatureAction(tokens);
+            }
+            if(tokens.equals(1, ".uno:Hani")){
+                std::cout << "Received custom command..." << std::endl;
+                // auto ptr = std::make_shared<ClientSession>(this);
+                // RController R(ptr);
+                std::cout << "handling incoming custom : [" << getAbbreviatedMessage(buffer, length) << ']' << std::endl;
+
+                // const char * buf = "uno .uno:SelectAll";
+
+                const char * buf1 = "uno .uno:InsertText {\"Text\":{\"type\":\"string\",\"value\":\"Your text here\"}}";
+
+                // _handleInput(buf,19);
+                return _handleInput(buf1,81);
+
             }
         }
 #endif

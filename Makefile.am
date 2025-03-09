@@ -81,7 +81,7 @@ nginxconfig_DATA = etc/nginx/coolwsd.conf
 ACLOCAL_AMFLAGS = -I m4
 
 # quick and easy for now.
-include_paths = -I${top_srcdir}/common -I${top_srcdir}/net -I${top_srcdir}/wsd -I${top_srcdir}/kit ${ZLIB_CFLAGS} ${ZSTD_CFLAGS} ${PNG_CFLAGS}
+include_paths = -I${top_srcdir}/common -I${top_srcdir}/net -I${top_srcdir}/wsd -I${top_srcdir}/kit -I${top_srcdir}/remote ${ZLIB_CFLAGS} ${ZSTD_CFLAGS} ${PNG_CFLAGS}
 if ENABLE_SSL
 include_paths += ${OPENSSL_CFLAGS}
 endif
@@ -172,7 +172,8 @@ coolwsd_sources = common/Crypto.cpp \
                   wsd/wopi/CheckFileInfo.cpp \
                   wsd/wopi/StorageConnectionManager.cpp \
                   wsd/wopi/WopiProxy.cpp \
-                  wsd/wopi/WopiStorage.cpp
+                  wsd/wopi/WopiStorage.cpp \
+                  remote/RController.cpp
 
 coolwsd_SOURCES = $(coolwsd_sources) \
                   $(shared_sources) \
@@ -371,7 +372,10 @@ wsd_headers = wsd/Admin.hpp \
               wsd/wopi/CheckFileInfo.hpp \
               wsd/wopi/StorageConnectionManager.hpp \
               wsd/wopi/WopiProxy.hpp \
-              wsd/wopi/WopiStorage.hpp
+              wsd/wopi/WopiStorage.hpp \
+              remote/RemoteCommand.hpp \
+              remote/IRemoteController.hpp \
+              remote/RController.hpp
 
 shared_headers = common/Anonymizer.hpp \
                  common/Common.hpp \

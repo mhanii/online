@@ -473,6 +473,8 @@ COOL_JS_LST =\
 	src/control/Ruler.ts \
 	src/control/VRuler.ts \
 	src/control/HRuler.ts \
+	src/model/Model.js \
+	src/model/Model.Sidebar.ts \
 	src/slideshow/SlideCache.ts \
 	src/slideshow/SlideCompositor.ts \
 	src/slideshow/LayerRenderer.ts \

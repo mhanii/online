@@ -160,6 +160,9 @@ m4_ifelse(MOBILEAPP,[true],
         <div id="slide-sorter"></div>
         <div id="presentation-toolbar"></div>
       </div>
+      <div id="ModelSidebar-dock-wrapper">
+        <div id="ModelSidebar-panel"></div>
+      </div>
       <div id="document-container" class="readonly" dir="ltr">
         <div id="map"></div>
       </div>

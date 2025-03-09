@@ -297,6 +297,10 @@ public:
     /// Because when client sends `load url` it doesn't have information about browser setting json
     void overrideDocOption();
 
+
+    // Hani edit
+    virtual bool _handleInput(const char* buffer, int length) override;
+
 #if !MOBILEAPP
     void updateBrowserSettingsJSON(const std::string& key, const std::string& value);
 #endif
@@ -316,7 +320,6 @@ private:
     /// SocketHandler: send those messages
     void writeQueuedMessages(std::size_t capacity) override;
 
-    virtual bool _handleInput(const char* buffer, int length) override;
 
     bool handleSignatureAction(const StringVector& tokens);
 

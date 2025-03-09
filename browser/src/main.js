@@ -91,6 +91,8 @@ L.Map.THIS = map;
 app.map = map;
 app.idleHandler.map = map;
 
+
+
 if (window.ThisIsTheEmscriptenApp) {
 	var docParamsString = $.param(docParams);
 	// The URL may already contain a query (e.g., 'http://server.tld/foo/wopi/files/bar?desktop=baz') - then just append more params
