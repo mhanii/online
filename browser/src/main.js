@@ -71,6 +71,12 @@ var map = L.map('map', {
 	outOfFocusTimeoutSecs: outOfFocusTimeoutSecs, // Dim after switching tabs.
 });
 
+// Initialize the model for external communication
+if (!map.model) {
+	console.log('Initializing model for map');
+	map.model = new L.Model();
+}
+
 ////// Controls /////
 
 map.uiManager = L.control.uiManager();

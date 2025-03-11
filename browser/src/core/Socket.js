@@ -1386,7 +1386,19 @@ app.definitions.Socket = L.Class.extend({
 			// intentional falltrough
 		}
 
-		if (!this._map._docLayer || this._handlingDelayedMessages) {
+		else if (textMsg.startsWith('sliderenderingcomplete:')) {
+			const status = textMsg.substring('sliderenderingcomplete:'.length + 1);
+			this._map.fire('sliderenderingcomplete', {
+				success: status === 'success'
+			});
+		}
+		else if (textMsg.startsWith('modelresponse')) {
+			// Handle model responses by firing a dedicated event
+			console.log('Socket received model response:', textMsg);
+			this._map.fire('modelresponse', { data: textMsg });
+			return; // Don't pass to document layer
+		}
+		else if (!this._map._docLayer || this._handlingDelayedMessages) {
 			this._delayMessage(textMsg);
 		} else {
 			this._map._docLayer._onMessage(textMsg, e.image);

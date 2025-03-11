@@ -299,7 +299,11 @@ public:
 
 
     // Hani edit
-    virtual bool _handleInput(const char* buffer, int length) override;
+
+
+    bool forwardToChild(const std::string& message,
+                        const std::shared_ptr<DocumentBroker>& docBroker);
+
 
 #if !MOBILEAPP
     void updateBrowserSettingsJSON(const std::string& key, const std::string& value);
@@ -337,8 +341,6 @@ private:
     bool sendFontRendering(const char* buffer, int length, const StringVector& tokens,
                            const std::shared_ptr<DocumentBroker>& docBroker);
 
-    bool forwardToChild(const std::string& message,
-                        const std::shared_ptr<DocumentBroker>& docBroker);
 
     bool forwardToClient(const std::shared_ptr<Message>& payload);
 
@@ -358,6 +360,8 @@ private:
     bool attemptLock(const std::shared_ptr<DocumentBroker>& docBroker);
 
     std::string getIsAdminUserStatus() const;
+    virtual bool _handleInput(const char* buffer, int length) override;
+
 
 private:
     std::weak_ptr<DocumentBroker> _docBroker;

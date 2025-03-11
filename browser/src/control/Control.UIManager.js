@@ -275,8 +275,14 @@ L.Control.UIManager = L.Control.extend({
 		if (!window.mode.isMobile()) {
 			this.map.statusBar = JSDialog.StatusBar(this.map);
 
+			// Ensure the map has a model for external communication
+			if (!this.map.model) {
+				console.log('UIManager: Initializing model for map');
+				this.map.model = new L.Model();
+			}
+
 			this.map.sidebar = JSDialog.Sidebar(this.map, {animSpeed: 200});
-			this.map.modelsidebar = JSDialog.ModelSidebar(this.map,{animSpeed:200});
+			this.map.chatsidebar = JSDialog.ChatSidebar(this.map, {animSpeed: 300});
 			this.map.formulaautocomplete = L.control.formulaautocomplete(this.map);
 			this.map.formulausage = L.control.formulausage(this.map);
 			this.map.autofillpreviewtooltip = L.control.autofillpreviewtooltip(this.map);
@@ -491,54 +497,18 @@ L.Control.UIManager = L.Control.extend({
 		}
 	},
 
-	initializeModelSidebar: function () {
-		// Hide the sidebar on start if saved state or UIDefault is set.
+	initializeChatSidebar: function () {
+		// Initialize the chat sidebar
 		if (window.mode.isDesktop() && !window.ThisIsAMobileApp) {
-			var showModelSidebar = this.getBooleanDocTypePref('ShowModelSidebar', true);
-
-			if (this.getBooleanDocTypePref('PropertyDeck', true)) {
-				app.socket.sendMessage('uno .uno:SidebarShow');
+			// No need to check for visibility since it's always visible now
+			// Just make sure it's properly initialized
+			if (this.map.chatsidebar) {
+				// Ensure it's expanded by default
+				this.map.chatsidebar.expand(false);
 			}
-
-			if (this.map.getDocType() === 'presentation') {
-				if (this.getBooleanDocTypePref('SdSlideTransitionDeck', false)) {
-					app.socket.sendMessage('uno .uno:SidebarShow');
-					app.socket.sendMessage('uno .uno:SlideChangeWindow');
-					this.map.modelsidebar.setupTargetDeck('.uno:SlideChangeWindow');
-				} else if (this.getBooleanDocTypePref('SdCustomAnimationDeck', false)) {
-					app.socket.sendMessage('uno .uno:SidebarShow');
-					app.socket.sendMessage('uno .uno:CustomAnimation');
-					this.map.modelsidebar.setupTargetDeck('.uno:CustomAnimation');
-				} else if (this.getBooleanDocTypePref('SdMasterPagesDeck', false)) {
-					app.socket.sendMessage('uno .uno:SidebarShow');
-					app.socket.sendMessage('uno .uno:MasterSlidesPanel');
-					this.map.modelsidebar.setupTargetDeck('.uno:MasterSlidesPanel');
-				} else if (this.getBooleanDocTypePref('NavigatorDeck', false)) {
-					app.socket.sendMessage('uno .uno:SidebarShow');
-					app.socket.sendMessage('uno .uno:Navigator');
-					this.map.modelsidebar.setupTargetDeck('.uno:Navigator');
-				}
-			} else if (this.getBooleanDocTypePref('NavigatorDeck', false)) {
-				app.socket.sendMessage('uno .uno:SidebarShow');
-				app.socket.sendMessage('uno .uno:Navigator');
-				this.map.modelsidebar.setupTargetDeck('.uno:Navigator');
-			}
-
-			if (!showModelSidebar)
-				app.socket.sendMessage('uno .uno:SidebarHide');
-		}
-
-		else if (window.mode.isChromebook()) {
-			// HACK - currently the sidebar shows when loaded,
-			// with the exception of mobile phones & tablets - but
-			// there, it does not show only because they start
-			// with read/only mode which hits an early exit in
-			// _launchSidebar() in Control.LokDialog.js
-			// So for the moment, let's just hide it on
-			// Chromebooks early
-			app.socket.sendMessage('uno .uno:SidebarHide');
 		}
 	},
+
 	// Initialize ruler
 	initializeRuler: function() {
 		if ((window.mode.isTablet() || window.mode.isDesktop()) && !app.isReadOnly()) {
@@ -644,17 +614,6 @@ L.Control.UIManager = L.Control.extend({
 
 	},
 
-	refreshModelSidebar: function(ms) {
-		ms = ms !== undefined ? ms : 400;
-		setTimeout(function () {
-			var message = 'dialogevent ' +
-				(window.modelsidebarId !== undefined ? window.modelsidebarId : -1) +
-				' {"id":"-1"}';
-			app.socket.sendMessage(message);
-		}, ms);
-
-	},
-
 	refreshToolbar: function() {
 		// TODO
 	},
@@ -715,7 +674,7 @@ L.Control.UIManager = L.Control.extend({
 
 		window.prefs.set('compactMode', uiMode.mode === 'classic');
 		this.initializeSidebar();
-		this.initializeModelSidebar();
+		this.initializeChatSidebar();
 		this.insertCustomButtons();
 
 		// this code ensures that elements in the notebookbar have their "selected" status

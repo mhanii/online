@@ -1,0 +1,23 @@
+{
+  "responses": [
+    {
+      "model": "gpt4",
+      "prompt": "*",
+      "response": {
+        "status": "success",
+        "model": "gpt4",
+        "result": {
+          "conversation": "I've created a simple heading and paragraph for you. The heading is styled in red and bold, while the paragraph has normal formatting.",
+          "snippet": "This text appears in the snippet area. It provides additional information about the formatting being applied to the document.",
+          "commands": [
+            ".uno:InsertText {\"Text\":{\"type\":\"string\",\"value\":\"Sample Heading\"}}",
+            ".uno:Bold",
+            ".uno:Color {\"Color\":{\"type\":\"long\",\"value\":16711680}}",
+            ".uno:InsertPara",
+            ".uno:InsertText {\"Text\":{\"type\":\"string\",\"value\":\"This is a sample paragraph with normal formatting.\"}}"
+          ]
+        }
+      }
+    }
+  ]
+} 

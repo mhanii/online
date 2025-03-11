@@ -1,36 +1,31 @@
 #pragma once
 
-
-#include <memory>
 #include <string>
-#include <wsd/ClientSession.hpp>
+#include <memory>
 
-
-
-
-// Forward declaration of ClientSession.
-
-// Interface for remote command objects.
-class IRemoteCommand{
+/**
+ * RemoteCommand - Base class for remote commands
+ *
+ * This class defines the interface for remote commands that can be
+ * executed by the RController.
+ */
+class RemoteCommand
+{
 public:
-    // Execute the command using the provided ClientSession.
-    virtual void execute(std::shared_ptr<ClientSession> session) = 0;
-};
+    RemoteCommand() = default;
+    virtual ~RemoteCommand() = default;
 
-// Concrete remote command that sends a text-based command.
-class RemoteCommand : public IRemoteCommand{
-public:
-    explicit RemoteCommand(const std::string &text)
-        : commandText(text) {}
-    virtual ~RemoteCommand() {}
+    /**
+     * Execute the command
+     *
+     * @return true if the command was executed successfully
+     */
+    virtual bool execute() = 0;
 
-    void execute(std::shared_ptr<ClientSession> session) {
-        if (session) {
-
-            session->_handleInput(commandText.c_str(),commandText.length());
-        }
-    }
-
-private:
-    std::string commandText;
+    /**
+     * Get the command name
+     *
+     * @return the command name
+     */
+    virtual std::string getName() const = 0;
 };

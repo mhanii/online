@@ -173,7 +173,8 @@ coolwsd_sources = common/Crypto.cpp \
                   wsd/wopi/StorageConnectionManager.cpp \
                   wsd/wopi/WopiProxy.cpp \
                   wsd/wopi/WopiStorage.cpp \
-                  remote/RController.cpp
+                  remote/RController.cpp \
+                  remote/ModelApiClient.cpp
 
 coolwsd_SOURCES = $(coolwsd_sources) \
                   $(shared_sources) \
@@ -186,7 +187,8 @@ noinst_PROGRAMS = clientnb \
                   lokitclient \
                   coolmap \
                   coolbench \
-                  coolsocketdump
+                  coolsocketdump \
+                  test_model_command
 
 if ENABLE_LIBFUZZER
 noinst_PROGRAMS += \
@@ -339,6 +341,14 @@ coolsocketdump_SOURCES = tools/WebSocketDump.cpp \
 			 common/DummyTraceEventEmitter.cpp \
 			 $(shared_sources)
 
+test_model_command_SOURCES = remote/test_model_command.cpp \
+                            common/DummyTraceEventEmitter.cpp \
+                            common/Log.cpp \
+                            common/StringVector.cpp \
+                            common/Protocol.cpp \
+                            common/Util.cpp \
+                            common/Util-server.cpp
+
 wsd_headers = wsd/Admin.hpp \
               wsd/AdminModel.hpp \
               wsd/Auth.hpp \
@@ -441,7 +451,12 @@ kit_headers = kit/ChildSession.hpp \
               kit/StateRecorder.hpp \
               kit/Watermark.hpp
 
-noinst_HEADERS = $(wsd_headers) $(shared_headers) $(kit_headers) \
+remote_headers = remote/RemoteCommand.hpp \
+                 remote/IRemoteController.hpp \
+                 remote/RController.hpp \
+                 remote/ModelApiClient.hpp
+
+noinst_HEADERS = $(wsd_headers) $(shared_headers) $(kit_headers) $(remote_headers) \
                  tools/COOLWebSocket.hpp \
                  test/HttpTestServer.hpp \
                  test/KitPidHelpers.hpp \
@@ -499,6 +514,7 @@ EXTRA_DIST = discovery.xml \
              scripts/unocommands.py \
              scripts/refresh-git-hooks \
              README.md \
+             remote/README.md \
              THIRDPARTYLICENSES \
              $(man_MANS)
 
@@ -580,7 +596,7 @@ setup-wsd: all @JAILS_PATH@ @CACHE_PATH@ presets-dir
 	@echo "Launching coolwsd"
 	@fc-cache "@LO_PATH@"/share/fonts/truetype
 	@mkdir -p $(abs_top_builddir)/test/samples
-	@$(abs_top_srcdir)/scripts/build-samples.py $(abs_top_srcdir)/test/samples $(abs_top_srcdir)/test/samples
+	@$(abs_top_srcdir)/scripts/build-samples.py $(abs_top_builddir)/test/samples $(abs_top_srcdir)/test/samples
 	@echo
 
 COMMON_PARAMS = \

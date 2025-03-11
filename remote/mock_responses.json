@@ -1,0 +1,49 @@
+{
+  "responses": [
+    {
+      "model": "gpt4",
+      "prompt": "Hani",
+      "response": {
+        "status": "success",
+        "model": "gpt4",
+        "result": "I'll add some styled text at the cursor position with 'Hani' in red:\n\n[snippet:Insert Text at Cursor with Styled 'Hani']\nuno .uno:InsertText {\"Text\":{\"type\":\"string\",\"value\":\"Hello, Hani!\"}}\nuno .uno:SelectWord {\"Word\":{\"type\":\"string\",\"value\":\"Hani\"}}\nuno .uno:Color {\"Color\":{\"type\":\"long\",\"value\":16711680}}\nuno .uno:Bold\nuno .uno:CharFontName {\"FontName\":{\"type\":\"string\",\"value\":\"Arial\"}}\nuno .uno:FontHeight {\"Height\":{\"type\":\"float\",\"value\":20}}\nuno .uno:Bold\n[/snippet]\n\nThis will insert 'Hello, Hani!' at the cursor position, make 'Hani' red and bold, set the font to Arial, increase the font size to 20, and then turn off bold for subsequent text. The word 'Hani' will be distinctly styled in red and bold."
+      }
+    },
+    {
+      "model": "gpt4",
+      "prompt": "format text",
+      "response": {
+        "status": "success",
+        "model": "gpt4",
+        "result": "Here are some text formatting commands you can use:\n\n[snippet:Text Formatting Commands]\n.uno:Bold\n.uno:Italic\n.uno:Underline\n[/snippet]\n\nYou can also adjust the font properties:\n\n[snippet:Font Properties]\n.uno:CharFontName {\"FontName\":{\"type\":\"string\",\"value\":\"Times New Roman\"}}\n.uno:FontHeight {\"FontHeight\":{\"type\":\"float\",\"value\":16}}\n[/snippet]\n\nAnd change text colors:\n\n[snippet:Text Colors]\n.uno:CharBackColor {\"BackColor\":{\"type\":\"long\",\"value\":16777215}}\n.uno:Color {\"Color\":{\"type\":\"long\",\"value\":255}}\n[/snippet]"
+      }
+    },
+    {
+      "model": "gpt4",
+      "prompt": "document operations",
+      "response": {
+        "status": "success",
+        "model": "gpt4",
+        "result": "Here are some common document operations:\n\n[snippet:Document Operations]\n.uno:SelectAll\n.uno:Copy\n.uno:Paste\n[/snippet]\n\nYou can also manage paragraphs:\n\n[snippet:Paragraph Formatting]\n.uno:LeftPara\n.uno:CenterPara\n.uno:RightPara\n[/snippet]\n\nAnd work with tables:\n\n[snippet:Table Operations]\n.uno:InsertTable {\"Columns\":{\"type\":\"long\",\"value\":3}, \"Rows\":{\"type\":\"long\",\"value\":2}}\n.uno:MergeCells\n[/snippet]"
+      }
+    },
+    {
+      "model": "gpt4",
+      "prompt": "help",
+      "response": {
+        "status": "success",
+        "model": "gpt4",
+        "result": "I can help you with various document editing tasks. Here are some things you can ask me to do:\n\n1. Format text (bold, italic, underline, font size, etc.)\n2. Insert content (text, tables, images)\n3. Perform document operations (select all, copy, paste)\n4. Apply paragraph formatting (alignment, spacing)\n5. Work with tables (insert, merge cells, format)\n\nJust tell me what you'd like to do, and I'll provide the appropriate commands or guidance."
+      }
+    },
+    {
+      "model": "default",
+      "prompt": "*",
+      "response": {
+        "status": "success",
+        "model": "default",
+        "result": "Here are some commands to create a document with information about Istanbul, including headings, sections, and a table:\n\nFirst, let's add a title and some headings:\n\n[snippet:Title and Headings]\nuno .uno:InsertText { \"Text\": \"Istanbul: A Historical and Cultural Crossroads\" }\nuno .uno:ApplyStyleHead1\nuno .uno:InsertText { \"Text\": \"Introduction\" }\nuno .uno:ApplyStyleHead2\n[/snippet]\n\nNow, let's add some introductory text:\n\n[snippet:Introduction Text]\nuno .uno:InsertText { \"Text\": \"Istanbul, formerly known as Constantinople, is a major city in Turkey that straddles Europe and Asia across the Bosphorus Strait. Its rich history, diverse culture, and strategic location have made it a significant center of trade, politics, and religion for centuries.\" }\n[/snippet]\n\nNext, let's add a section about the history of Istanbul:\n\n[snippet:History Section]\nuno .uno:InsertText { \"Text\": \"History\" }\nuno .uno:ApplyStyleHead2\nuno .uno:InsertText { \"Text\": \"Founded as Byzantium in the 7th century BC, it was later renamed Constantinople when it became the capital of the Roman Empire under Constantine the Great in 330 AD. It served as the capital of the Byzantine Empire for over a thousand years and was later conquered by the Ottoman Empire in 1453, becoming its capital until the establishment of the Turkish Republic.\" }\n[/snippet]\n\nLet's add some details on landmarks:\n\n[snippet:Landmarks Section]\nuno .uno:InsertText { \"Text\": \"Landmarks\" }\nuno .uno:ApplyStyleHead2\nuno .uno:InsertText { \"Text\": \"Istanbul boasts numerous historical and cultural landmarks, including the Hagia Sophia, Blue Mosque, Topkapi Palace, and Grand Bazaar. These sites reflect the city's diverse heritage and architectural grandeur.\" }\n[/snippet]\n\nNow, let's create a table with some basic data:\n\n[snippet:Table Creation]\nuno .uno:InsertText { \"Text\": \"Table: Key Facts About Istanbul\" }\nuno .uno:ApplyStyleHead2\nuno .uno:InsertTable {\"Columns\":{\"type\":\"long\",\"value\":2}, \"Rows\":{\"type\":\"long\",\"value\":4}}\nuno .uno:GoToStartOfTable\nuno .uno:InsertText { \"Text\": \"Fact\" }\nuno .uno:GoRight\nuno .uno:InsertText { \"Text\": \"Value\" }\nuno .uno:GoDown\nuno .uno:GoLeft\nuno .uno:InsertText { \"Text\": \"Population (2023)\" }\nuno .uno:GoRight\nuno .uno:InsertText { \"Text\": \"Approximately 16 million\" }\nuno .uno:GoDown\nuno .uno:GoLeft\nuno .uno:InsertText { \"Text\": \"Area\" }\nuno .uno:GoRight\nuno .uno:InsertText { \"Text\": \"5,343 square kilometers\" }\n[/snippet]\n\nThese commands will generate a basic document with a title, headings, sections, and a table. You can expand on these snippets and add more details as needed, I hope this helps with your homework!"
+      }
+    }
+  ]
+} 

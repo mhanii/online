@@ -188,6 +188,8 @@ namespace
 bool ChildSession::_handleInput(const char *buffer, int length)
 {
     LOG_TRC("handling [" << getAbbreviatedMessage(buffer, length) << ']');
+    std::cout << "handling incoming : [" << getAbbreviatedMessage(buffer, length) << ']' << std::endl;
+
     const std::string firstLine = getFirstLine(buffer, length);
     const StringVector tokens = StringVector::tokenize(firstLine.data(), firstLine.size());
 

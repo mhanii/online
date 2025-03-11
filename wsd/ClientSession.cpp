@@ -13,6 +13,10 @@
 
 #include "ClientSession.hpp"
 
+#include "RController.hpp"
+
+#include "ClientRequestDispatcher.hpp"
+
 #include <filesystem>
 #include <ios>
 #include <map>
@@ -67,39 +71,37 @@ void logSyntaxErrorDetails(const StringVector& tokens, const std::string& firstL
 {
     LOG_WRN("Invalid syntax for '" << tokens[0] << "' message: [" << firstLine << ']');
 }
-}
+} // namespace
 
-ClientSession::ClientSession(
-    const std::shared_ptr<ProtocolHandlerInterface>& ws,
-    const std::string& id,
-    const std::shared_ptr<DocumentBroker>& docBroker,
-    const Poco::URI& uriPublic,
-    const bool readOnly,
-    const RequestDetails &requestDetails) :
-    Session(ws, "ToClient-" + id, id, readOnly),
-    _docBroker(docBroker),
-    _uriPublic(uriPublic),
-    _auth(Authorization::create(uriPublic)),
-    _isDocumentOwner(false),
-    _state(SessionState::DETACHED),
-    _lastStateTime(std::chrono::steady_clock::now()),
-    _keyEvents(1),
-    _clientVisibleArea(0, 0, 0, 0),
-    _splitX(0),
-    _splitY(0),
-    _clientSelectedPart(-1),
-    _clientSelectedMode(0),
-    _tileWidthPixel(0),
-    _tileHeightPixel(0),
-    _tileWidthTwips(0),
-    _tileHeightTwips(0),
-    _kitViewId(-1),
-    _serverURL(requestDetails),
-    _isTextDocument(false),
-    _thumbnailSession(false),
-    _canonicalViewId(CanonicalViewId::None),
-    _sentAudit(false),
-    _sentBrowserSetting(false)
+ClientSession::ClientSession(const std::shared_ptr<ProtocolHandlerInterface>& ws,
+                             const std::string& id,
+                             const std::shared_ptr<DocumentBroker>& docBroker,
+                             const Poco::URI& uriPublic, const bool readOnly,
+                             const RequestDetails& requestDetails)
+    : Session(ws, "ToClient-" + id, id, readOnly)
+    , _docBroker(docBroker)
+    , _uriPublic(uriPublic)
+    , _auth(Authorization::create(uriPublic))
+    , _isDocumentOwner(false)
+    , _state(SessionState::DETACHED)
+    , _lastStateTime(std::chrono::steady_clock::now())
+    , _keyEvents(1)
+    , _clientVisibleArea(0, 0, 0, 0)
+    , _splitX(0)
+    , _splitY(0)
+    , _clientSelectedPart(-1)
+    , _clientSelectedMode(0)
+    , _tileWidthPixel(0)
+    , _tileHeightPixel(0)
+    , _tileWidthTwips(0)
+    , _tileHeightTwips(0)
+    , _kitViewId(-1)
+    , _serverURL(requestDetails)
+    , _isTextDocument(false)
+    , _thumbnailSession(false)
+    , _canonicalViewId(CanonicalViewId::None)
+    , _sentAudit(false)
+    , _sentBrowserSetting(false)
 {
     const std::size_t curConnections = ++COOLWSD::NumConnections;
     LOG_INF("ClientSession ctor [" << getName() << "] for URI: [" << _uriPublic.toString()
@@ -111,14 +113,14 @@ ClientSession::ClientSession(
 
     // Emit metadata Trace Events for the synthetic pid used for the Trace Events coming in from the
     // client's cool, and for its dummy thread.
-    TraceEvent::emitOneRecordingIfEnabled("{\"name\":\"process_name\",\"ph\":\"M\",\"args\":{\"name\":\""
-                                          "cool-" + id
-                                          + "\"},\"pid\":"
-                                          + std::to_string(getpid() + SYNTHETIC_COOL_PID_OFFSET)
-                                          + ",\"tid\":1},\n");
-    TraceEvent::emitOneRecordingIfEnabled("{\"name\":\"thread_name\",\"ph\":\"M\",\"args\":{\"name\":\"JS\"},\"pid\":"
-                                          + std::to_string(getpid() + SYNTHETIC_COOL_PID_OFFSET)
-                                          + ",\"tid\":1},\n");
+    TraceEvent::emitOneRecordingIfEnabled(
+        "{\"name\":\"process_name\",\"ph\":\"M\",\"args\":{\"name\":\""
+        "cool-" +
+        id + "\"},\"pid\":" + std::to_string(getpid() + SYNTHETIC_COOL_PID_OFFSET) +
+        ",\"tid\":1},\n");
+    TraceEvent::emitOneRecordingIfEnabled(
+        "{\"name\":\"thread_name\",\"ph\":\"M\",\"args\":{\"name\":\"JS\"},\"pid\":" +
+        std::to_string(getpid() + SYNTHETIC_COOL_PID_OFFSET) + ",\"tid\":1},\n");
 
     _browserSettingsJSON = new Poco::JSON::Object();
 }
@@ -134,7 +136,8 @@ void ClientSession::construct()
 ClientSession::~ClientSession()
 {
     const std::size_t curConnections = --COOLWSD::NumConnections;
-    LOG_INF("~ClientSession dtor [" << getName() << "], current number of connections: " << curConnections);
+    LOG_INF("~ClientSession dtor [" << getName()
+                                    << "], current number of connections: " << curConnections);
 
     std::unique_lock<std::mutex> lock(GlobalSessionMapMutex);
     GlobalSessionMap.erase(getId());
@@ -155,20 +158,18 @@ void ClientSession::setState(SessionState newState)
 
     switch (newState)
     {
-    case SessionState::DETACHED:
-        assert(_state == SessionState::DETACHED);
-        break;
-    case SessionState::LOADING:
-        assert(_state == SessionState::DETACHED);
-        break;
-    case SessionState::LIVE:
-        assert(_state == SessionState::LIVE ||
-               _state == SessionState::LOADING);
-        break;
-    case SessionState::WAIT_DISCONNECT:
-        assert(_state == SessionState::LOADING ||
-               _state == SessionState::LIVE);
-        break;
+        case SessionState::DETACHED:
+            assert(_state == SessionState::DETACHED);
+            break;
+        case SessionState::LOADING:
+            assert(_state == SessionState::DETACHED);
+            break;
+        case SessionState::LIVE:
+            assert(_state == SessionState::LIVE || _state == SessionState::LOADING);
+            break;
+        case SessionState::WAIT_DISCONNECT:
+            assert(_state == SessionState::LOADING || _state == SessionState::LIVE);
+            break;
     }
     _state = newState;
     _lastStateTime = std::chrono::steady_clock::now();
@@ -193,7 +194,7 @@ bool ClientSession::disconnectFromKit()
 }
 
 // Allow 20secs for the clipboard and disconnection to come.
-bool ClientSession::staleWaitDisconnect(const std::chrono::steady_clock::time_point &now)
+bool ClientSession::staleWaitDisconnect(const std::chrono::steady_clock::time_point& now)
 {
     if (_state != SessionState::WAIT_DISCONNECT)
         return false;
@@ -206,10 +207,9 @@ void ClientSession::rotateClipboardKey(bool notifyClient)
         return;
 
     _clipboardKeys[1] = _clipboardKeys[0];
-    _clipboardKeys[0] = Util::rng::getHexString(
-        ClipboardTokenLengthBytes);
-    LOG_TRC("Clipboard key on [" << getId() << "] set to " << _clipboardKeys[0] <<
-            " last was " << _clipboardKeys[1]);
+    _clipboardKeys[0] = Util::rng::getHexString(ClipboardTokenLengthBytes);
+    LOG_TRC("Clipboard key on [" << getId() << "] set to " << _clipboardKeys[0] << " last was "
+                                 << _clipboardKeys[1]);
     if (notifyClient)
         sendTextFrame("clipboardkey: " + _clipboardKeys[0]);
 }
@@ -222,7 +222,8 @@ std::string ClientSession::getClipboardURI(bool encode)
     return createPublicURI("clipboard", _clipboardKeys[0], encode);
 }
 
-std::string ClientSession::createPublicURI(const std::string& subPath, const std::string& tag, bool encode)
+std::string ClientSession::createPublicURI(const std::string& subPath, const std::string& tag,
+                                           bool encode)
 {
     Poco::URI wopiSrc = getDocumentBroker()->getPublicUri();
     wopiSrc.setQueryParameters(Poco::URI::QueryParameters());
@@ -230,10 +231,8 @@ std::string ClientSession::createPublicURI(const std::string& subPath, const std
     const std::string encodedFrom = Uri::encode(wopiSrc.toString());
 
     std::string meta = _serverURL.getSubURLForEndpoint(
-        "/cool/" + subPath + "?WOPISrc=" + encodedFrom +
-        "&ServerId=" + Util::getProcessIdentifier() +
-        "&ViewId=" + std::to_string(getKitViewId()) +
-        "&Tag=" + tag);
+        "/cool/" + subPath + "?WOPISrc=" + encodedFrom + "&ServerId=" +
+        Util::getProcessIdentifier() + "&ViewId=" + std::to_string(getKitViewId()) + "&Tag=" + tag);
 
 #if !MOBILEAPP
     if (!COOLWSD::RouteToken.empty())
@@ -246,7 +245,7 @@ std::string ClientSession::createPublicURI(const std::string& subPath, const std
     return Uri::encode(meta);
 }
 
-bool ClientSession::matchesClipboardKeys(const std::string &/*viewId*/, const std::string &tag)
+bool ClientSession::matchesClipboardKeys(const std::string& /*viewId*/, const std::string& tag)
 {
     if (tag.empty())
     {
@@ -259,11 +258,10 @@ bool ClientSession::matchesClipboardKeys(const std::string &/*viewId*/, const st
                        [&tag](const std::string& it) { return it == tag; });
 }
 
-
-void ClientSession::handleClipboardRequest(DocumentBroker::ClipboardRequest     type,
-                                           const std::shared_ptr<StreamSocket> &socket,
-                                           const std::string                   &tag,
-                                           const std::shared_ptr<std::string>  &data)
+void ClientSession::handleClipboardRequest(DocumentBroker::ClipboardRequest type,
+                                           const std::shared_ptr<StreamSocket>& socket,
+                                           const std::string& tag,
+                                           const std::shared_ptr<std::string>& data)
 {
     // Move the socket into our DocBroker.
     auto docBroker = getDocumentBroker();
@@ -330,7 +328,7 @@ void ClientSession::handleClipboardRequest(DocumentBroker::ClipboardRequest     
                     std::string commandName;
                     JsonUtil::findJSONValue(json, "commandName", commandName);
                     http::Session::FinishedCallback finishedCallback =
-                        [this, commandName=std::move(commandName),
+                        [this, commandName = std::move(commandName),
                          docBroker](const std::shared_ptr<http::Session>& session)
                     {
                         const std::shared_ptr<const http::Response> httpResponse =
@@ -345,7 +343,8 @@ void ClientSession::handleClipboardRequest(DocumentBroker::ClipboardRequest     
                         std::string clipboardHeader = httpResponse->get("X-COOL-Clipboard");
                         if (clipboardHeader != "true")
                         {
-                            LOG_ERR("Clipboard response is missing the required 'X-COOL-Clipboard: true' header");
+                            LOG_ERR("Clipboard response is missing the required 'X-COOL-Clipboard: "
+                                    "true' header");
                             return;
                         }
 
@@ -354,7 +353,7 @@ void ClientSession::handleClipboardRequest(DocumentBroker::ClipboardRequest     
                         if (ClipboardData::isOwnFormat(stream))
                         {
                             docBroker->forwardToChild(client_from_this(), "setclipboard\n" + body,
-                                    true);
+                                                      true);
                             docBroker->forwardToChild(client_from_this(), "uno " + commandName);
                         }
                         else
@@ -372,7 +371,8 @@ void ClientSession::handleClipboardRequest(DocumentBroker::ClipboardRequest     
                         {
                             httpSession->setFinishedHandler(std::move(finishedCallback));
 
-                            http::Session::ConnectFailCallback connectFailCallback = [this, url](const std::shared_ptr<http::Session>& /* session */)
+                            http::Session::ConnectFailCallback connectFailCallback =
+                                [this, url](const std::shared_ptr<http::Session>& /* session */)
                             {
                                 LOG_ERR(
                                     "Failed to start an async clipboard download request with URL ["
@@ -419,16 +419,16 @@ void ClientSession::handleClipboardRequest(DocumentBroker::ClipboardRequest     
 
 void ClientSession::onTileProcessed(TileWireId wireId)
 {
-    auto iter = std::find_if(_tilesOnFly.begin(), _tilesOnFly.end(),
-    [wireId](const std::pair<TileWireId, std::chrono::steady_clock::time_point>& curTile)
-    {
-        return curTile.first == wireId;
-    });
+    auto iter = std::find_if(
+        _tilesOnFly.begin(), _tilesOnFly.end(),
+        [wireId](const std::pair<TileWireId, std::chrono::steady_clock::time_point>& curTile)
+        { return curTile.first == wireId; });
 
-    if(iter != _tilesOnFly.end())
+    if (iter != _tilesOnFly.end())
         _tilesOnFly.erase(iter);
     else
-        LOG_INF("Tileprocessed message with an unknown wire-id '" << wireId << "' from session " << getId());
+        LOG_INF("Tileprocessed message with an unknown wire-id '" << wireId << "' from session "
+                                                                  << getId());
 }
 
 #if !MOBILEAPP
@@ -446,7 +446,8 @@ makeSignatureActionSession(const std::shared_ptr<ClientSession> clientSession,
         return nullptr;
     }
 
-    http::Session::FinishedCallback finishedCallback = [clientSession, commandName](const std::shared_ptr<http::Session>& session)
+    http::Session::FinishedCallback finishedCallback =
+        [clientSession, commandName](const std::shared_ptr<http::Session>& session)
     {
         const std::shared_ptr<const http::Response> httpResponse = session->response();
         Poco::JSON::Object::Ptr resultArguments = new Poco::JSON::Object();
@@ -472,7 +473,7 @@ makeSignatureActionSession(const std::shared_ptr<ClientSession> clientSession,
     httpSession->setFinishedHandler(std::move(finishedCallback));
     return httpSession;
 }
-}
+} // namespace
 
 bool ClientSession::handleSignatureAction(const StringVector& tokens)
 {
@@ -494,7 +495,8 @@ bool ClientSession::handleSignatureAction(const StringVector& tokens)
     {
         requestUrl += "/api/signatures/download-signed-file";
     }
-    std::shared_ptr<http::Session> httpSession = makeSignatureActionSession(client_from_this(), commandName, requestUrl);
+    std::shared_ptr<http::Session> httpSession =
+        makeSignatureActionSession(client_from_this(), commandName, requestUrl);
     if (!httpSession)
     {
         return false;
@@ -530,10 +532,10 @@ bool ClientSession::handleSignatureAction(const StringVector& tokens)
 }
 #endif
 
-bool ClientSession::_handleInput(const char *buffer, int length)
+bool ClientSession::_handleInput(const char* buffer, int length)
 {
     LOG_TRC("handling incoming [" << getAbbreviatedMessage(buffer, length) << ']');
-    std::cout << "handling incoming [" << getAbbreviatedMessage(buffer, length) << ']' << std::endl;
+    // std::cout << "handling incoming [" << getAbbreviatedMessage(buffer, length) << ']' << std::endl;
 
     const std::string firstLine = getFirstLine(buffer, length);
     const StringVector tokens = StringVector::tokenize(firstLine.data(), firstLine.size());
@@ -541,7 +543,8 @@ bool ClientSession::_handleInput(const char *buffer, int length)
     std::shared_ptr<DocumentBroker> docBroker = getDocumentBroker();
     if (!docBroker || docBroker->isMarkedToDestroy())
     {
-        LOG_ERR("No DocBroker found, or DocBroker marked to be destroyed. Terminating session " << getName());
+        LOG_ERR("No DocBroker found, or DocBroker marked to be destroyed. Terminating session "
+                << getName());
         return false;
     }
 
@@ -549,6 +552,27 @@ bool ClientSession::_handleInput(const char *buffer, int length)
     {
         sendTextFrameAndLogError("error: cmd=empty kind=unknown");
         return false;
+    }
+
+    // Check if this is a model command
+    if (tokens.equals(0, "model"))
+    {
+        // Get or create the RController for this session
+        std::shared_ptr<RController> controller = RController::getForSession(getId());
+        if (!controller)
+        {
+            controller = RController::createForSession(client_from_this());
+            if (!controller)
+            {
+                LOG_ERR("Failed to create RController for session " << getId());
+                return false;
+            }
+        }
+
+        // Forward the command to the RController
+        // The RController will handle thread safety internally
+        std::cout << "Forwarding command to RController" << std::endl;
+        return controller->executeCommand(buffer, length);
     }
 
     if (tokens.equals(0, "DEBUG"))
@@ -570,16 +594,20 @@ bool ClientSession::_handleInput(const char *buffer, int length)
                 static bool warnedOnce = false;
                 if (!warnedOnce)
                 {
-                    LOG_WRN("For some reason the _performanceCounterEpoch is still zero, ignoring TRACEEVENT from cool as the timestamp would be garbage");
+                    LOG_WRN("For some reason the _performanceCounterEpoch is still zero, ignoring "
+                            "TRACEEVENT from cool as the timestamp would be garbage");
                     warnedOnce = true;
                 }
                 return false;
-            } else if (_performanceCounterEpoch < 1620000000000000ull || _performanceCounterEpoch > 2000000000000000ull)
+            }
+            else if (_performanceCounterEpoch < 1620000000000000ull ||
+                     _performanceCounterEpoch > 2000000000000000ull)
             {
                 static bool warnedOnce = false;
                 if (!warnedOnce)
                 {
-                    LOG_WRN("For some reason the _performanceCounterEpoch is bogus, ignoring TRACEEVENT from cool as the timestamp would be garbage");
+                    LOG_WRN("For some reason the _performanceCounterEpoch is bogus, ignoring "
+                            "TRACEEVENT from cool as the timestamp would be garbage");
                     warnedOnce = true;
                 }
                 return false;
@@ -593,8 +621,7 @@ bool ClientSession::_handleInput(const char *buffer, int length)
                 std::string ph;
                 uint64_t ts;
                 if (getTokenString(tokens[1], "name", name) &&
-                    getTokenString(tokens[2], "ph", ph) &&
-                    getTokenUInt64(tokens[3], "ts", ts))
+                    getTokenString(tokens[2], "ph", ph) && getTokenUInt64(tokens[3], "ts", ts))
                 {
                     std::string args;
                     if (tokens.size() >= 5 && getTokenString(tokens, "args", args))
@@ -604,53 +631,34 @@ bool ClientSession::_handleInput(const char *buffer, int length)
                     uint64_t dur;
                     if (ph == "i")
                     {
-                        COOLWSD::writeTraceEventRecording("{\"name\":"
-                                                          + name
-                                                          + ",\"ph\":\"i\""
-                                                          + args
-                                                          + ",\"ts\":"
-                                                          + std::to_string(ts + _performanceCounterEpoch)
-                                                          + ",\"pid\":"
-                                                          + std::to_string(getpid() + SYNTHETIC_COOL_PID_OFFSET)
-                                                          + ",\"tid\":1},\n");
+                        COOLWSD::writeTraceEventRecording(
+                            "{\"name\":" + name + ",\"ph\":\"i\"" + args +
+                            ",\"ts\":" + std::to_string(ts + _performanceCounterEpoch) +
+                            ",\"pid\":" + std::to_string(getpid() + SYNTHETIC_COOL_PID_OFFSET) +
+                            ",\"tid\":1},\n");
                     }
                     // Should the first getTokenUInt64()'s return value really
                     // be ignored?
                     else if ((ph == "S" || ph == "F") &&
                              (static_cast<void>(getTokenUInt64(tokens[4], "id", id)),
-                             getTokenUInt64(tokens[5], "tid", tid)))
+                              getTokenUInt64(tokens[5], "tid", tid)))
                     {
-                        COOLWSD::writeTraceEventRecording("{\"name\":"
-                                                          + name
-                                                          + ",\"ph\":\""
-                                                          + ph
-                                                          + "\""
-                                                          + args
-                                                          + ",\"ts\":"
-                                                          + std::to_string(ts + _performanceCounterEpoch)
-                                                          + ",\"pid\":"
-                                                          + std::to_string(getpid() + SYNTHETIC_COOL_PID_OFFSET)
-                                                          + ",\"tid\":"
-                                                          + std::to_string(tid)
-                                                          + ",\"id\":"
-                                                          + std::to_string(id)
-                                                          + "},\n");
+                        COOLWSD::writeTraceEventRecording(
+                            "{\"name\":" + name + ",\"ph\":\"" + ph + "\"" + args +
+                            ",\"ts\":" + std::to_string(ts + _performanceCounterEpoch) +
+                            ",\"pid\":" + std::to_string(getpid() + SYNTHETIC_COOL_PID_OFFSET) +
+                            ",\"tid\":" + std::to_string(tid) + ",\"id\":" + std::to_string(id) +
+                            "},\n");
                     }
-                    else if (ph == "X" &&
-                             getTokenUInt64(tokens[4], "dur", dur))
+                    else if (ph == "X" && getTokenUInt64(tokens[4], "dur", dur))
                     {
-                        COOLWSD::writeTraceEventRecording("{\"name\":"
-                                                          + name
-                                                          + ",\"ph\":\"X\""
-                                                          + args
-                                                          + ",\"ts\":"
-                                                          + std::to_string(ts + _performanceCounterEpoch)
-                                                          + ",\"pid\":"
-                                                          + std::to_string(getpid() + SYNTHETIC_COOL_PID_OFFSET)
-                                                          + ",\"tid\":1"
-                                                            ",\"dur\":"
-                                                          + std::to_string(dur)
-                                                          + "},\n");
+                        COOLWSD::writeTraceEventRecording(
+                            "{\"name\":" + name + ",\"ph\":\"X\"" + args +
+                            ",\"ts\":" + std::to_string(ts + _performanceCounterEpoch) +
+                            ",\"pid\":" + std::to_string(getpid() + SYNTHETIC_COOL_PID_OFFSET) +
+                            ",\"tid\":1"
+                            ",\"dur\":" +
+                            std::to_string(dur) + "},\n");
                     }
                     else
                     {
@@ -723,9 +731,9 @@ bool ClientSession::_handleInput(const char *buffer, int length)
                     // Now we know how to translate from the client's performance.now() values to
                     // microseconds since the epoch.
                     _performanceCounterEpoch = ts * 1000 - (uint64_t)(counter * 1000);
-                    LOG_INF("Client timestamps: Date.now():" << ts <<
-                            ", performance.now():" << counter
-                            << " => " << _performanceCounterEpoch);
+                    LOG_INF("Client timestamps: Date.now():" << ts
+                                                             << ", performance.now():" << counter
+                                                             << " => " << _performanceCounterEpoch);
                 }
             }
         }
@@ -867,8 +875,9 @@ bool ClientSession::_handleInput(const char *buffer, int length)
         int canonicalViewId = to_underlying(getCanonicalViewId());
         if (!(UnitWSD::isUnitTesting() ? true : canonicalViewId != 0 && canonicalViewId >= 1000))
         {
-            LOG_WRN("Got tile request for session [" << getId() << "] on document [" << docBroker->getDocKey()
-                                << "] with invalid view ID [" << canonicalViewId << "].");
+            LOG_WRN("Got tile request for session ["
+                    << getId() << "] on document [" << docBroker->getDocKey()
+                    << "] with invalid view ID [" << canonicalViewId << "].");
         }
         return sendTile(buffer, length, tokens, docBroker);
     }
@@ -877,8 +886,9 @@ bool ClientSession::_handleInput(const char *buffer, int length)
         int canonicalViewId = to_underlying(getCanonicalViewId());
         if (!(UnitWSD::isUnitTesting() ? true : canonicalViewId != 0 && canonicalViewId >= 1000))
         {
-            LOG_WRN("Got tilecombine request for session [" << getId() << "] on document [" << docBroker->getDocKey()
-                                << "] with invalid view ID [" << canonicalViewId << "].");
+            LOG_WRN("Got tilecombine request for session ["
+                    << getId() << "] on document [" << docBroker->getDocKey()
+                    << "] with invalid view ID [" << canonicalViewId << "].");
         }
         return sendCombinedTiles(buffer, length, tokens, docBroker);
     }
@@ -938,10 +948,8 @@ bool ClientSession::_handleInput(const char *buffer, int length)
         int y;
         int width;
         int height;
-        if ((tokens.size() != 5 && tokens.size() != 7) ||
-            !getTokenInteger(tokens[1], "x", x) ||
-            !getTokenInteger(tokens[2], "y", y) ||
-            !getTokenInteger(tokens[3], "width", width) ||
+        if ((tokens.size() != 5 && tokens.size() != 7) || !getTokenInteger(tokens[1], "x", x) ||
+            !getTokenInteger(tokens[2], "y", y) || !getTokenInteger(tokens[3], "width", width) ||
             !getTokenInteger(tokens[4], "height", height))
         {
             // Be forgiving and log instead of disconnecting.
@@ -981,11 +989,10 @@ bool ClientSession::_handleInput(const char *buffer, int length)
     }
     else if (tokens.equals(0, "setclientpart"))
     {
-        if(!_isTextDocument)
+        if (!_isTextDocument)
         {
             int temp;
-            if (tokens.size() != 2 ||
-                !getTokenInteger(tokens[1], "part", temp))
+            if (tokens.size() != 2 || !getTokenInteger(tokens[1], "part", temp))
             {
                 logSyntaxErrorDetails(tokens, firstLine);
                 return false;
@@ -999,12 +1006,11 @@ bool ClientSession::_handleInput(const char *buffer, int length)
     }
     else if (tokens.equals(0, "selectclientpart"))
     {
-        if(!_isTextDocument)
+        if (!_isTextDocument)
         {
             int part;
             int how;
-            if (tokens.size() != 3 ||
-                !getTokenInteger(tokens[1], "part", part) ||
+            if (tokens.size() != 3 || !getTokenInteger(tokens[1], "part", part) ||
                 !getTokenInteger(tokens[2], "how", how))
             {
                 sendTextFrameAndLogError("error: cmd=selectclientpart kind=syntax");
@@ -1021,8 +1027,7 @@ bool ClientSession::_handleInput(const char *buffer, int length)
         if (!_isTextDocument)
         {
             int position;
-            if (tokens.size() != 2 ||
-                !getTokenInteger(tokens[1], "position", position))
+            if (tokens.size() != 2 || !getTokenInteger(tokens[1], "position", position))
             {
                 sendTextFrameAndLogError("error: cmd=moveselectedclientparts kind=syntax");
                 return false;
@@ -1038,8 +1043,7 @@ bool ClientSession::_handleInput(const char *buffer, int length)
     else if (tokens.equals(0, "clientzoom"))
     {
         int tilePixelWidth, tilePixelHeight, tileTwipWidth, tileTwipHeight;
-        if (tokens.size() < 5 ||
-            !getTokenInteger(tokens[1], "tilepixelwidth", tilePixelWidth) ||
+        if (tokens.size() < 5 || !getTokenInteger(tokens[1], "tilepixelwidth", tilePixelWidth) ||
             !getTokenInteger(tokens[2], "tilepixelheight", tilePixelHeight) ||
             !getTokenInteger(tokens[3], "tiletwipwidth", tileTwipWidth) ||
             !getTokenInteger(tokens[4], "tiletwipheight", tileTwipHeight))
@@ -1061,8 +1065,7 @@ bool ClientSession::_handleInput(const char *buffer, int length)
     else if (tokens.equals(0, "tileprocessed"))
     {
         std::string wids;
-        if (tokens.size() != 2 ||
-            !getTokenString(tokens[1], "wids", wids))
+        if (tokens.size() != 2 || !getTokenString(tokens[1], "wids", wids))
         {
             // Be forgiving and log instead of disconnecting.
             // sendTextFrameAndLogError("error: cmd=tileprocessed kind=syntax");
@@ -1071,9 +1074,11 @@ bool ClientSession::_handleInput(const char *buffer, int length)
         }
 
         // call onTileProcessed on each tileID of tileid1, tileid2, ...
-        auto lambda = [this](size_t /*nIndex*/, const std::string_view token){
+        auto lambda = [this](size_t /*nIndex*/, const std::string_view token)
+        {
             std::string copy(token);
-            TileWireId wireId = 0; bool res;
+            TileWireId wireId = 0;
+            bool res;
             std::tie(wireId, res) = Util::i32FromString(copy);
             if (!res)
                 LOG_WRN("Invalid syntax for tileprocessed wireid '" << token << "'");
@@ -1141,8 +1146,7 @@ bool ClientSession::_handleInput(const char *buffer, int length)
 
         return forwardToChild(firstLine, docBroker);
     }
-    else if (tokens.equals(0, "formfieldevent") ||
-             tokens.equals(0, "sallogoverride") ||
+    else if (tokens.equals(0, "formfieldevent") || tokens.equals(0, "sallogoverride") ||
              tokens.equals(0, "contentcontrolevent"))
     {
         return forwardToChild(firstLine, docBroker);
@@ -1155,37 +1159,37 @@ bool ClientSession::_handleInput(const char *buffer, int length)
             // level is higher, of course.
             if (tokens.equals(1, "default"))
             {
-                LOG_INF("Thread-local logging level being set to default ["
-                        << Log::getLevel()
-                        << "]");
+                LOG_INF("Thread-local logging level being set to default [" << Log::getLevel()
+                                                                            << "]");
                 Log::setThreadLocalLogLevel(Log::getLevelName());
             }
             else
             {
                 try
                 {
-                    auto leastVerboseAllowed = Poco::Logger::parseLevel(COOLWSD::LeastVerboseLogLevelSettableFromClient);
-                    auto mostVerboseAllowed = Poco::Logger::parseLevel(COOLWSD::MostVerboseLogLevelSettableFromClient);
+                    auto leastVerboseAllowed =
+                        Poco::Logger::parseLevel(COOLWSD::LeastVerboseLogLevelSettableFromClient);
+                    auto mostVerboseAllowed =
+                        Poco::Logger::parseLevel(COOLWSD::MostVerboseLogLevelSettableFromClient);
 
                     if (tokens.equals(1, "verbose"))
                     {
-                        LOG_INF("Client sets thread-local logging level to the most verbose allowed ["
-                                << COOLWSD::MostVerboseLogLevelSettableFromClient
-                                << "]");
+                        LOG_INF(
+                            "Client sets thread-local logging level to the most verbose allowed ["
+                            << COOLWSD::MostVerboseLogLevelSettableFromClient << "]");
                         Log::setThreadLocalLogLevel(COOLWSD::MostVerboseLogLevelSettableFromClient);
                         LOG_INF("Thread-local logging level was set to ["
-                                << COOLWSD::MostVerboseLogLevelSettableFromClient
-                                << "]");
+                                << COOLWSD::MostVerboseLogLevelSettableFromClient << "]");
                     }
                     else if (tokens.equals(1, "terse"))
                     {
-                        LOG_INF("Client sets thread-local logging level to the least verbose allowed ["
-                                << COOLWSD::LeastVerboseLogLevelSettableFromClient
-                                << "]");
-                        Log::setThreadLocalLogLevel(COOLWSD::LeastVerboseLogLevelSettableFromClient);
+                        LOG_INF(
+                            "Client sets thread-local logging level to the least verbose allowed ["
+                            << COOLWSD::LeastVerboseLogLevelSettableFromClient << "]");
+                        Log::setThreadLocalLogLevel(
+                            COOLWSD::LeastVerboseLogLevelSettableFromClient);
                         LOG_INF("Thread-local logging level was set to ["
-                                << COOLWSD::LeastVerboseLogLevelSettableFromClient
-                                << "]");
+                                << COOLWSD::LeastVerboseLogLevelSettableFromClient << "]");
                     }
                     else
                     {
@@ -1193,24 +1197,23 @@ bool ClientSession::_handleInput(const char *buffer, int length)
                         // Note that numerically the higher priority levels are lower in value.
                         if (level >= leastVerboseAllowed && level <= mostVerboseAllowed)
                         {
-                            LOG_INF("Thread-local logging level being set to ["
-                                    << tokens[1]
-                                    << "]");
+                            LOG_INF("Thread-local logging level being set to [" << tokens[1]
+                                                                                << "]");
                             Log::setThreadLocalLogLevel(tokens[1]);
                         }
                         else
                         {
                             LOG_WRN("Client tries to set logging level to ["
-                                    << tokens[1]
-                                    << "] which is outside of bounds ["
+                                    << tokens[1] << "] which is outside of bounds ["
                                     << COOLWSD::LeastVerboseLogLevelSettableFromClient << ","
                                     << COOLWSD::MostVerboseLogLevelSettableFromClient << "]");
                         }
                     }
                 }
-                catch (const Poco::Exception &e)
+                catch (const Poco::Exception& e)
                 {
-                    LOG_WRN("Exception while handling loggingleveloverride message: " << e.message());
+                    LOG_WRN(
+                        "Exception while handling loggingleveloverride message: " << e.message());
                 }
             }
         }
@@ -1224,12 +1227,14 @@ bool ClientSession::_handleInput(const char *buffer, int length)
                 if (tokens.equals(1, "start"))
                 {
                     TraceEvent::startRecording();
-                    LOG_INF("Trace Event recording in this WSD process turned on (might have been on already)");
+                    LOG_INF("Trace Event recording in this WSD process turned on (might have been "
+                            "on already)");
                 }
                 else if (tokens.equals(1, "stop"))
                 {
                     TraceEvent::stopRecording();
-                    LOG_INF("Trace Event recording in this WSD process turned off (might have been off already)");
+                    LOG_INF("Trace Event recording in this WSD process turned off (might have been "
+                            "off already)");
                 }
             }
             forwardToChild(firstLine, docBroker);
@@ -1273,61 +1278,31 @@ bool ClientSession::_handleInput(const char *buffer, int length)
         return true;
     }
 #endif // !MOBILEAPP && !WASMAPP
-    else if (tokens.equals(0, "outlinestate") ||
-             tokens.equals(0, "downloadas") ||
-             tokens.equals(0, "getchildid") ||
-             tokens.equals(0, "gettextselection") ||
-             tokens.equals(0, "paste") ||
-             tokens.equals(0, "insertfile") ||
-             tokens.equals(0, "key") ||
-             tokens.equals(0, "textinput") ||
-             tokens.equals(0, "windowkey") ||
-             tokens.equals(0, "mouse") ||
-             tokens.equals(0, "windowmouse") ||
-             tokens.equals(0, "windowgesture") ||
-             tokens.equals(0, "resetselection") ||
-             tokens.equals(0, "saveas") ||
-             tokens.equals(0, "exportas") ||
-             tokens.equals(0, "selectgraphic") ||
-             tokens.equals(0, "selecttext") ||
-             tokens.equals(0, "windowselecttext") ||
-             tokens.equals(0, "setpage") ||
-             tokens.equals(0, "uno") ||
-             tokens.equals(0, "urp") ||
-             tokens.equals(0, "useractive") ||
-             tokens.equals(0, "userinactive") ||
-             tokens.equals(0, "getslide") ||
-             tokens.equals(0, "paintwindow") ||
-             tokens.equals(0, "windowcommand") ||
-             tokens.equals(0, "asksignaturestatus") ||
-             tokens.equals(0, "rendershapeselection") ||
-             tokens.equals(0, "resizewindow") ||
-             tokens.equals(0, "removetextcontext") ||
-             tokens.equals(0, "rendersearchresult") ||
+    else if (tokens.equals(0, "outlinestate") || tokens.equals(0, "downloadas") ||
+             tokens.equals(0, "getchildid") || tokens.equals(0, "gettextselection") ||
+             tokens.equals(0, "paste") || tokens.equals(0, "insertfile") ||
+             tokens.equals(0, "key") || tokens.equals(0, "textinput") ||
+             tokens.equals(0, "windowkey") || tokens.equals(0, "mouse") ||
+             tokens.equals(0, "windowmouse") || tokens.equals(0, "windowgesture") ||
+             tokens.equals(0, "resetselection") || tokens.equals(0, "saveas") ||
+             tokens.equals(0, "exportas") || tokens.equals(0, "selectgraphic") ||
+             tokens.equals(0, "selecttext") || tokens.equals(0, "windowselecttext") ||
+             tokens.equals(0, "setpage") || tokens.equals(0, "uno") || tokens.equals(0, "urp") ||
+             tokens.equals(0, "useractive") || tokens.equals(0, "userinactive") ||
+             tokens.equals(0, "getslide") || tokens.equals(0, "paintwindow") ||
+             tokens.equals(0, "windowcommand") || tokens.equals(0, "asksignaturestatus") ||
+             tokens.equals(0, "rendershapeselection") || tokens.equals(0, "resizewindow") ||
+             tokens.equals(0, "removetextcontext") || tokens.equals(0, "rendersearchresult") ||
              tokens.equals(0, "geta11yfocusedparagraph") ||
-             tokens.equals(0, "geta11ycaretposition") ||
-             tokens.equals(0, "getpresentationinfo"))
+             tokens.equals(0, "geta11ycaretposition") || tokens.equals(0, "getpresentationinfo"))
     {
 #if !MOBILEAPP
         if (tokens.equals(0, "uno"))
         {
-            if (tokens.equals(1, ".uno:PrepareSignature") || tokens.equals(1, ".uno:DownloadSignature"))
+            if (tokens.equals(1, ".uno:PrepareSignature") ||
+                tokens.equals(1, ".uno:DownloadSignature"))
             {
                 return handleSignatureAction(tokens);
-            }
-            if(tokens.equals(1, ".uno:Hani")){
-                std::cout << "Received custom command..." << std::endl;
-                // auto ptr = std::make_shared<ClientSession>(this);
-                // RController R(ptr);
-                std::cout << "handling incoming custom : [" << getAbbreviatedMessage(buffer, length) << ']' << std::endl;
-
-                // const char * buf = "uno .uno:SelectAll";
-
-                const char * buf1 = "uno .uno:InsertText {\"Text\":{\"type\":\"string\",\"value\":\"Your text here\"}}";
-
-                // _handleInput(buf,19);
-                return _handleInput(buf1,81);
-
             }
         }
 #endif
@@ -1476,8 +1451,7 @@ void ClientSession::overrideDocOption()
     }
 }
 
-bool ClientSession::loadDocument(const char* /*buffer*/, int /*length*/,
-                                 const StringVector& tokens,
+bool ClientSession::loadDocument(const char* /*buffer*/, int /*length*/, const StringVector& tokens,
                                  const std::shared_ptr<DocumentBroker>& docBroker)
 {
     if (tokens.size() < 2)
@@ -1526,8 +1500,8 @@ bool ClientSession::loadDocument(const char* /*buffer*/, int /*length*/,
         if (!getUserExtraInfo().empty())
         {
             std::string encodedUserExtraInfo;
-            Poco::URI::encode(getUserExtraInfo(), "", encodedUserExtraInfo);
-            oss << " authorextrainfo=" << encodedUserExtraInfo; //TODO: could this include PII?
+            Poco::URI::encode(getUserExtraInfo(), "",
+                              encodedUserExtraInfo); //TODO: could this include PII?
         }
 
         if (!getUserPrivateInfo().empty())
@@ -1644,7 +1618,8 @@ bool ClientSession::loadDocument(const char* /*buffer*/, int /*length*/,
         sendRestrictionInfo();
 #endif
 
-        return forwardToChild(oss.str(), docBroker);;
+        return forwardToChild(oss.str(), docBroker);
+        ;
     }
     catch (const Poco::SyntaxException&)
     {
@@ -1708,7 +1683,7 @@ void ClientSession::sendRestrictionInfo()
 }
 #endif
 
-bool ClientSession::getCommandValues(const char *buffer, int length, const StringVector& tokens,
+bool ClientSession::getCommandValues(const char* buffer, int length, const StringVector& tokens,
                                      const std::shared_ptr<DocumentBroker>& docBroker)
 {
     std::string command;
@@ -1716,18 +1691,18 @@ bool ClientSession::getCommandValues(const char *buffer, int length, const Strin
         return sendTextFrameAndLogError("error: cmd=commandvalues kind=syntax");
 
     std::string cmdValues;
-    if (docBroker->hasTileCache() && docBroker->tileCache().getTextStream(TileCache::StreamType::CmdValues, command, cmdValues))
+    if (docBroker->hasTileCache() &&
+        docBroker->tileCache().getTextStream(TileCache::StreamType::CmdValues, command, cmdValues))
         return sendTextFrame(cmdValues);
 
     return forwardToChild(std::string(buffer, length), docBroker);
 }
 
-bool ClientSession::sendFontRendering(const char *buffer, int length, const StringVector& tokens,
+bool ClientSession::sendFontRendering(const char* buffer, int length, const StringVector& tokens,
                                       const std::shared_ptr<DocumentBroker>& docBroker)
 {
     std::string font, text;
-    if (tokens.size() < 2 ||
-        !getTokenString(tokens[1], "font", font))
+    if (tokens.size() < 2 || !getTokenString(tokens[1], "font", font))
     {
         return sendTextFrameAndLogError("error: cmd=renderfont kind=syntax");
     }
@@ -1736,7 +1711,8 @@ bool ClientSession::sendFontRendering(const char *buffer, int length, const Stri
 
     if (docBroker->hasTileCache())
     {
-        Blob cachedStream = docBroker->tileCache().lookupCachedStream(TileCache::StreamType::Font, font+text);
+        Blob cachedStream =
+            docBroker->tileCache().lookupCachedStream(TileCache::StreamType::Font, font + text);
         if (cachedStream)
         {
             const std::string response = "renderfont: " + tokens.cat(' ', 1) + '\n';
@@ -1747,7 +1723,7 @@ bool ClientSession::sendFontRendering(const char *buffer, int length, const Stri
     return forwardToChild(std::string(buffer, length), docBroker);
 }
 
-bool ClientSession::sendTile(const char * /*buffer*/, int /*length*/, const StringVector& tokens,
+bool ClientSession::sendTile(const char* /*buffer*/, int /*length*/, const StringVector& tokens,
                              const std::shared_ptr<DocumentBroker>& docBroker)
 {
     try
@@ -1763,7 +1739,8 @@ bool ClientSession::sendTile(const char * /*buffer*/, int /*length*/, const Stri
     return true;
 }
 
-bool ClientSession::sendCombinedTiles(const char* /*buffer*/, int /*length*/, const StringVector& tokens,
+bool ClientSession::sendCombinedTiles(const char* /*buffer*/, int /*length*/,
+                                      const StringVector& tokens,
                                       const std::shared_ptr<DocumentBroker>& docBroker)
 {
     try
@@ -1816,7 +1793,8 @@ bool ClientSession::filterMessage(const std::string& message) const
                 LOG_WRN("WOPI host has disabled export for this session");
             }
             else if (id == "slideshow" && _wopiFileInfo &&
-                     (_wopiFileInfo->getDisableExport() || !_wopiFileInfo->getWatermarkText().empty()))
+                     (_wopiFileInfo->getDisableExport() ||
+                      !_wopiFileInfo->getWatermarkText().empty()))
             {
                 allowed = false;
                 LOG_WRN("WOPI host has disabled slideshow for this session");
@@ -1854,9 +1832,9 @@ void ClientSession::setReadOnly(bool bVal)
 void ClientSession::sendFileMode(const bool readOnly, const bool editComments)
 {
     std::string result = "filemode:{\"readOnly\": ";
-    result += readOnly ? "true": "false";
+    result += readOnly ? "true" : "false";
     result += ", \"editComment\": ";
-    result += editComments ? "true": "false";
+    result += editComments ? "true" : "false";
     result += "}";
     sendTextFrame(result);
 }
@@ -1888,10 +1866,7 @@ bool ClientSession::attemptLock(const std::shared_ptr<DocumentBroker>& docBroker
     return bResult;
 }
 
-bool ClientSession::hasQueuedMessages() const
-{
-    return _senderQueue.size() > 0;
-}
+bool ClientSession::hasQueuedMessages() const { return _senderQueue.size() > 0; }
 
 void ClientSession::writeQueuedMessages(std::size_t capacity)
 {
@@ -1936,7 +1911,9 @@ void ClientSession::writeQueuedMessages(std::size_t capacity)
 void ClientSession::postProcessCopyPayload(const std::shared_ptr<Message>& payload)
 {
     // Insert our meta origin if we can
-    payload->rewriteDataBody([this](std::vector<char>& data) {
+    payload->rewriteDataBody(
+        [this](std::vector<char>& data)
+        {
             if (Util::findInVector(data, "clipboardcontent: content\ntext/plain") == 0)
             {
                 // Single format and it's plain text (not HTML): no need to rewrite anything.
@@ -1984,7 +1961,8 @@ void ClientSession::postProcessCopyPayload(const std::shared_ptr<Message>& paylo
         });
 }
 
-bool ClientSession::handlePresentationInfo(const std::shared_ptr<Message>& payload, const std::shared_ptr<DocumentBroker>& docBroker)
+bool ClientSession::handlePresentationInfo(const std::shared_ptr<Message>& payload,
+                                           const std::shared_ptr<DocumentBroker>& docBroker)
 {
     std::string json(payload->data().data(), payload->size());
 
@@ -2013,12 +1991,16 @@ bool ClientSession::handlePresentationInfo(const std::shared_ptr<Message>& paylo
                         {
                             Poco::JSON::Object::Ptr video = videos->getObject(videoIndex);
                             const std::string id = JsonUtil::getJSONValue<std::string>(video, "id");
-                            const std::string url = JsonUtil::getJSONValue<std::string>(video, "url");
+                            const std::string url =
+                                JsonUtil::getJSONValue<std::string>(video, "url");
 
                             if (!id.empty() && !url.empty())
                             {
-                                std::string original = "{ \"id\" : \"" + id + "\", \"url\" : \"" + url + "\" }";
-                                docBroker->addEmbeddedMedia(id, original); // Capture the original message with internal URL.
+                                std::string original =
+                                    "{ \"id\" : \"" + id + "\", \"url\" : \"" + url + "\" }";
+                                docBroker->addEmbeddedMedia(
+                                    id,
+                                    original); // Capture the original message with internal URL.
 
                                 const std::string mediaUrl =
                                     Uri::encode(createPublicURI("media", id, false), "&");
@@ -2103,14 +2085,13 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
         std::string errorCommand;
         std::string errorKind;
         if (getTokenString(tokens[1], "cmd", errorCommand) &&
-            getTokenString(tokens[2], "kind", errorKind) )
+            getTokenString(tokens[2], "kind", errorKind))
         {
             if (errorCommand == "load")
             {
                 LOG_ERR("Document load failed: " << errorKind);
                 if (errorKind == "passwordrequired:to-view" ||
-                    errorKind == "passwordrequired:to-modify" ||
-                    errorKind == "wrongpassword")
+                    errorKind == "passwordrequired:to-modify" || errorKind == "wrongpassword")
                 {
                     if (isConvertTo)
                     {
@@ -2146,10 +2127,10 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
     }
     else if (tokens.equals(0, "setpart:") && tokens.size() == 2)
     {
-        if(!_isTextDocument)
+        if (!_isTextDocument)
         {
             int setPart;
-            if(getTokenInteger(tokens[1], "part", setPart))
+            if (getTokenInteger(tokens[1], "part", setPart))
             {
                 _clientSelectedPart = setPart;
             }
@@ -2159,7 +2140,7 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
             }
             else
                 return false;
-         }
+        }
     }
 #if !MOBILEAPP
     else if (tokens.size() == 3 && (tokens.equals(0, "saveas:") || tokens.equals(0, "exportas:")))
@@ -2206,9 +2187,8 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
                 relative = relative.substr(1);
 
             // Rewrite file:// URLs to be visible to the outside world.
-            const Path path(FileUtil::buildLocalPathToJail(COOLWSD::EnableMountNamespaces,
-                                                           docBroker->getJailRoot(),
-                                                           std::move(relative)));
+            const Path path(FileUtil::buildLocalPathToJail(
+                COOLWSD::EnableMountNamespaces, docBroker->getJailRoot(), std::move(relative)));
             if (Poco::File(path).exists())
             {
                 if (!isConvertTo)
@@ -2227,7 +2207,8 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
             else
             {
                 // Blank for failure.
-                LOG_DBG("SaveAs produced no output in '" << path.toString() << "', producing blank url.");
+                LOG_DBG("SaveAs produced no output in '" << path.toString()
+                                                         << "', producing blank url.");
                 resultURL.clear();
             }
         }
@@ -2297,10 +2278,12 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
                 docBroker->setInitialSetting(unoStatePair.first);
                 if (unoStatePair.first == ".uno:TrackChanges")
                 {
-                    if ((unoStatePair.second == "true" &&
-                         _wopiFileInfo && _wopiFileInfo->getDisableChangeTrackingRecord() == WopiStorage::WOPIFileInfo::TriState::True) ||
-                        (unoStatePair.second == "false" &&
-                         _wopiFileInfo && _wopiFileInfo->getDisableChangeTrackingRecord() == WopiStorage::WOPIFileInfo::TriState::False))
+                    if ((unoStatePair.second == "true" && _wopiFileInfo &&
+                         _wopiFileInfo->getDisableChangeTrackingRecord() ==
+                             WopiStorage::WOPIFileInfo::TriState::True) ||
+                        (unoStatePair.second == "false" && _wopiFileInfo &&
+                         _wopiFileInfo->getDisableChangeTrackingRecord() ==
+                             WopiStorage::WOPIFileInfo::TriState::False))
                     {
                         // Toggle the TrackChanges state.
                         LOG_DBG("Forcing " << unoStatePair.first << " toggle per user settings.");
@@ -2309,10 +2292,12 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
                 }
                 else if (unoStatePair.first == ".uno:ShowTrackedChanges")
                 {
-                    if ((unoStatePair.second == "true" &&
-                         _wopiFileInfo && _wopiFileInfo->getDisableChangeTrackingShow() == WopiStorage::WOPIFileInfo::TriState::True) ||
-                        (unoStatePair.second == "false" &&
-                         _wopiFileInfo && _wopiFileInfo->getDisableChangeTrackingShow() == WopiStorage::WOPIFileInfo::TriState::False))
+                    if ((unoStatePair.second == "true" && _wopiFileInfo &&
+                         _wopiFileInfo->getDisableChangeTrackingShow() ==
+                             WopiStorage::WOPIFileInfo::TriState::True) ||
+                        (unoStatePair.second == "false" && _wopiFileInfo &&
+                         _wopiFileInfo->getDisableChangeTrackingShow() ==
+                             WopiStorage::WOPIFileInfo::TriState::False))
                     {
                         // Toggle the ShowTrackChanges state.
                         LOG_DBG("Forcing " << unoStatePair.first << " toggle per user settings.");
@@ -2354,8 +2339,8 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
 
         // final cleanup ...
         if (!empty && (!_wopiFileInfo || !_wopiFileInfo->getDisableCopy()))
-            COOLWSD::SavedClipboards->insertClipboard(
-                _clipboardKeys, &payload->data()[header], payload->size() - header);
+            COOLWSD::SavedClipboards->insertClipboard(_clipboardKeys, &payload->data()[header],
+                                                      payload->size() - header);
 
         for (const auto& it : _clipSockets)
         {
@@ -2383,7 +2368,7 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
             }
 
             socket->shutdown();
-            LOG_INF("Queued " << (empty?"empty":"clipboard") << " response for send.");
+            LOG_INF("Queued " << (empty ? "empty" : "clipboard") << " response for send.");
         }
 #endif
         _clipSockets.clear();
@@ -2400,8 +2385,7 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
         if (_thumbnailSession)
         {
             int x, y;
-            if (stringToInteger(tokens[1], x) &&
-                stringToInteger(tokens[2], y))
+            if (stringToInteger(tokens[1], x) && stringToInteger(tokens[2], y))
             {
                 std::ostringstream renderThumbnailCmd;
                 renderThumbnailCmd << "getthumbnail x=" << x << " y=" << y;
@@ -2451,13 +2435,15 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
         forwardToClient(payload);
         return true;
     }
-    else if (tokens.equals(0, "formfieldbutton:")) {
+    else if (tokens.equals(0, "formfieldbutton:"))
+    {
         // Do not send redundant messages
         if (_lastSentFormFielButtonMessage == firstLine)
             return true;
         _lastSentFormFielButtonMessage = firstLine;
     }
-    else if (tokens.equals(0, "canonicalidchange:")) {
+    else if (tokens.equals(0, "canonicalidchange:"))
+    {
         int viewId, canonicalId;
         if (getTokenInteger(tokens[1], "viewid", viewId) &&
             getTokenInteger(tokens[2], "canonicalid", canonicalId))
@@ -2524,14 +2510,14 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
                 std::ostringstream cmd;
                 cmd << "{";
                 cmd << "\"Name\":"
-                        "{"
-                        "\"type\":\"string\","
-                        "\"value\":\"URL\""
-                        "},"
-                        "\"URL\":"
-                        "{"
-                        "\"type\":\"string\","
-                        "\"value\":\"#";
+                       "{"
+                       "\"type\":\"string\","
+                       "\"value\":\"URL\""
+                       "},"
+                       "\"URL\":"
+                       "{"
+                       "\"type\":\"string\","
+                       "\"value\":\"#";
                 cmd << getThumbnailTarget();
                 cmd << "\"}}";
 
@@ -2541,10 +2527,12 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
 
             Poco::JSON::Parser parser;
             Poco::Dynamic::Var statusJsonVar = parser.parse(firstLine.substr(7));
-            const Poco::SharedPtr<Poco::JSON::Object>& statusJsonObject = statusJsonVar.extract<Poco::JSON::Object::Ptr>();
+            const Poco::SharedPtr<Poco::JSON::Object>& statusJsonObject =
+                statusJsonVar.extract<Poco::JSON::Object::Ptr>();
 
             if (statusJsonObject->has("selectedpart"))
-                _clientSelectedPart = std::atoi(statusJsonObject->get("selectedpart").toString().c_str());
+                _clientSelectedPart =
+                    std::atoi(statusJsonObject->get("selectedpart").toString().c_str());
 
             if (statusJsonObject->has("mode"))
                 _clientSelectedMode = std::atoi(statusJsonObject->get("mode").toString().c_str());
@@ -2560,7 +2548,8 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
         {
             Poco::JSON::Parser parser;
             Poco::Dynamic::Var statusJsonVar = parser.parse(firstLine.substr(13));
-            const Poco::SharedPtr<Poco::JSON::Object>& statusJsonObject = statusJsonVar.extract<Poco::JSON::Object::Ptr>();
+            const Poco::SharedPtr<Poco::JSON::Object>& statusJsonObject =
+                statusJsonVar.extract<Poco::JSON::Object::Ptr>();
 
             if (statusJsonObject->has("mode"))
                 _clientSelectedMode = std::atoi(statusJsonObject->get("mode").toString().c_str());
@@ -2575,9 +2564,9 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
                     Poco::JSON::Parser parser;
                     const Poco::Dynamic::Var result = parser.parse(stringJSON);
                     const auto& object = result.extract<Poco::JSON::Object::Ptr>();
-                    const std::string commandName = object->has("commandName") ? object->get("commandName").toString() : "";
-                    if (commandName == ".uno:CharFontName" ||
-                        commandName == ".uno:StyleApply")
+                    const std::string commandName =
+                        object->has("commandName") ? object->get("commandName").toString() : "";
+                    if (commandName == ".uno:CharFontName" || commandName == ".uno:StyleApply")
                     {
                         // other commands should not be cached
                         docBroker->tileCache().saveTextStream(TileCache::StreamType::CmdValues,
@@ -2609,7 +2598,8 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
                 // or not existing target and we will not enter invalidatecursor second time
                 std::ostringstream renderThumbnailCmd;
                 auto position = getThumbnailPosition();
-                renderThumbnailCmd << "getthumbnail x=" << position.first << " y=" << position.second;
+                renderThumbnailCmd << "getthumbnail x=" << position.first
+                                   << " y=" << position.second;
                 docBroker->forwardToChild(client_from_this(), renderThumbnailCmd.str());
             }
         }
@@ -2627,8 +2617,7 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
                 const std::string rectangle = object->get("rectangle").toString();
                 StringVector rectangleTokens(StringVector::tokenize(rectangle, ','));
                 int x = 0, y = 0, w = 0, h = 0;
-                if (rectangleTokens.size() > 2 &&
-                    stringToInteger(rectangleTokens[0], x) &&
+                if (rectangleTokens.size() > 2 && stringToInteger(rectangleTokens[0], x) &&
                     stringToInteger(rectangleTokens[1], y))
                 {
                     if (rectangleTokens.size() > 3)
@@ -2685,7 +2674,8 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
 
                 // send server audit results after we received information about users (who is admin)
                 const ServerAuditUtil& serverAudit = docBroker->getServerAudit();
-                std::string audit = serverAudit.isDisabled() ? "disabled" : serverAudit.getResultsJSON();
+                std::string audit =
+                    serverAudit.isDisabled() ? "disabled" : serverAudit.getResultsJSON();
                 const std::string auditMessage = std::string("serveraudit: ") + audit;
                 forwardToClient(std::make_shared<Message>(auditMessage, Message::Dir::Out));
             }
@@ -2696,8 +2686,7 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
         else if (tokens.equals(0, "renderfont:"))
         {
             std::string font, text;
-            if (tokens.size() < 3 ||
-                !getTokenString(tokens[1], "font", font))
+            if (tokens.size() < 3 || !getTokenString(tokens[1], "font", font))
             {
                 LOG_ERR("Bad syntax for: " << firstLine);
                 return false;
@@ -2788,7 +2777,8 @@ bool ClientSession::handleKitToClientMessage(const std::shared_ptr<Message>& pay
                 if (!error)
                 {
                     int firstLineSize = firstLine.size() + 1;
-                    std::string thumbnail(payload->data().data() + firstLineSize, payload->data().size() - firstLineSize);
+                    std::string thumbnail(payload->data().data() + firstLineSize,
+                                          payload->data().size() - firstLineSize);
 
                     http::Response httpResponse(http::StatusCode::OK);
                     FileServerRequestHandler::hstsHeaders(httpResponse);
@@ -2845,8 +2835,7 @@ void ClientSession::enqueueSendMessage(const std::shared_ptr<Message>& data)
 
     TileWireId wireId = 0;
     bool haveWireId = false;
-    if (data->firstTokenMatches("tile:") ||
-        data->firstTokenMatches("delta:"))
+    if (data->firstTokenMatches("tile:") || data->firstTokenMatches("delta:"))
     {
         // Avoid sending tile or delta if it has the same wireID as the
         // previously sent tile
@@ -2886,29 +2875,30 @@ size_t ClientSession::getTilesOnFlyUpperLimit() const
     }
     else
     {
-        tilesOnFlyUpperLimit = 200; // Have a big number here to get all tiles requested by file opening
+        tilesOnFlyUpperLimit =
+            200; // Have a big number here to get all tiles requested by file opening
     }
     return tilesOnFlyUpperLimit;
 }
 
-void ClientSession::removeOutdatedTilesOnFly(const std::chrono::steady_clock::time_point &now)
+void ClientSession::removeOutdatedTilesOnFly(const std::chrono::steady_clock::time_point& now)
 {
     size_t dropped = 0;
     const auto highTimeoutMs = std::chrono::milliseconds(TILE_ROUNDTRIP_TIMEOUT_MS);
     const auto lowTimeoutMs = std::chrono::milliseconds((int)(0.9 * TILE_ROUNDTRIP_TIMEOUT_MS));
     // Check only the beginning of the list, tiles are ordered by timestamp
-    while(!_tilesOnFly.empty())
+    while (!_tilesOnFly.empty())
     {
         auto tileIter = _tilesOnFly.begin();
-        const auto elapsedTimeMs = std::chrono::duration_cast<
-            std::chrono::milliseconds>(now - tileIter->second);
+        const auto elapsedTimeMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - tileIter->second);
         if (elapsedTimeMs > highTimeoutMs ||
             // once we start dropping - drop lots in a similar range of time
             (dropped > 0 && elapsedTimeMs > lowTimeoutMs))
         {
             LOG_TRC("Tracker tileID " << tileIter->first << " was dropped because of time out ("
-                    << elapsedTimeMs
-                    << "). Tileprocessed message did not arrive in time.");
+                                      << elapsedTimeMs
+                                      << "). Tileprocessed message did not arrive in time.");
             dropped++;
             _tilesOnFly.erase(tileIter);
         }
@@ -2916,7 +2906,9 @@ void ClientSession::removeOutdatedTilesOnFly(const std::chrono::steady_clock::ti
             break;
     }
     if (dropped > 0)
-        LOG_WRN("client not consuming tiles; stalled for " << (TILE_ROUNDTRIP_TIMEOUT_MS/1000) << " seconds: removed tracking for " << dropped << " on the fly tiles");
+        LOG_WRN("client not consuming tiles; stalled for " << (TILE_ROUNDTRIP_TIMEOUT_MS / 1000)
+                                                           << " seconds: removed tracking for "
+                                                           << dropped << " on the fly tiles");
 }
 
 Util::Rectangle ClientSession::getNormalizedVisibleArea() const
@@ -2989,6 +2981,9 @@ void ClientSession::onDisconnect()
     {
         LOG_ERR("Exception while closing socket for docKey [" << docKey << "]: " << exc.what());
     }
+
+    // Remove the RController for this session
+    RController::removeForSession(getId());
 }
 
 void ClientSession::dumpState(std::ostream& os)
@@ -2996,12 +2991,11 @@ void ClientSession::dumpState(std::ostream& os)
     Session::dumpState(os);
     const std::shared_ptr<DocumentBroker> docBroker = _docBroker.lock();
 
-    os << "\t\tisLive: " << isLive()
-       << "\n\t\tisViewLoaded: " << isViewLoaded()
-       << "\n\t\tisDocumentOwner: " << isDocumentOwner()
-       << "\n\t\tstate: " << name(_state)
-       << "\n\t\tkeyEvents: " << _keyEvents
-//       << "\n\t\tvisibleArea: " << _clientVisibleArea
+    os << "\t\tisLive: " << isLive() << "\n\t\tisViewLoaded: " << isViewLoaded()
+       << "\n\t\tisDocumentOwner: " << isDocumentOwner() << "\n\t\tstate: " << name(_state)
+       << "\n\t\tkeyEvents: "
+       << _keyEvents
+       //       << "\n\t\tvisibleArea: " << _clientVisibleArea
        << "\n\t\tclientSelectedPart: " << _clientSelectedPart
        << "\n\t\ttile size Pixel: " << _tileWidthPixel << 'x' << _tileHeightPixel
        << "\n\t\ttile size Twips: " << _tileWidthTwips << 'x' << _tileHeightTwips
@@ -3010,28 +3004,30 @@ void ClientSession::dumpState(std::ostream& os)
        << "\n\t\tisTextDocument: " << _isTextDocument
        << "\n\t\tclipboardKeys[0]: " << _clipboardKeys[0]
        << "\n\t\tclipboardKeys[1]: " << _clipboardKeys[1]
-       << "\n\t\tclip sockets: " << _clipSockets.size()
-       << "\n\t\tproxy access:: " << _proxyAccess
+       << "\n\t\tclip sockets: " << _clipSockets.size() << "\n\t\tproxy access:: " << _proxyAccess
        << "\n\t\tclientSelectedMode: " << _clientSelectedMode
-       << "\n\t\trequestedTiles: " << getRequestedTiles().size()
-       << "\n\t\tbeingRendered: " << (!docBroker ? -1 : docBroker->tileCache().countTilesBeingRenderedForSession(client_from_this(), std::chrono::steady_clock::now()));
+       << "\n\t\trequestedTiles: " << getRequestedTiles().size() << "\n\t\tbeingRendered: "
+       << (!docBroker ? -1
+                      : docBroker->tileCache().countTilesBeingRenderedForSession(
+                            client_from_this(), std::chrono::steady_clock::now()));
 
     if (_protocol)
     {
         uint64_t sent = 0, recv = 0;
         _protocol->getIOStats(sent, recv);
-        os << "\n\t\tsent/keystroke: " << (double)sent/_keyEvents << " bytes";
+        os << "\n\t\tsent/keystroke: " << (double)sent / _keyEvents << " bytes";
     }
 
     os << "\n\t\tonFlyUpperLimit: " << getTilesOnFlyUpperLimit();
     os << "\n\t\tonFlyCount: " << getTilesOnFlyCount();
     if (_tilesOnFly.size() > 0)
-        os << " between wid: " << _tilesOnFly.front().first << " as of " <<
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - _tilesOnFly.front().second) << " ms "
-           << " and wid: " << _tilesOnFly.back().first << " as of " <<
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - _tilesOnFly.back().second) << " ms ";
+        os << " between wid: " << _tilesOnFly.front().first << " as of "
+           << std::chrono::duration_cast<std::chrono::milliseconds>(
+                  std::chrono::steady_clock::now() - _tilesOnFly.front().second)
+           << " ms " << " and wid: " << _tilesOnFly.back().first << " as of "
+           << std::chrono::duration_cast<std::chrono::milliseconds>(
+                  std::chrono::steady_clock::now() - _tilesOnFly.back().second)
+           << " ms ";
 
     os << '\n';
     _senderQueue.dumpState(os);
@@ -3039,31 +3035,30 @@ void ClientSession::dumpState(std::ostream& os)
     // FIXME: need to dump other bits ...
 }
 
-const std::string &ClientSession::getOrCreateProxyAccess()
+const std::string& ClientSession::getOrCreateProxyAccess()
 {
     if (_proxyAccess.size() <= 0)
-        _proxyAccess = Util::rng::getHexString(
-            ProxyAccessTokenLengthBytes);
+        _proxyAccess = Util::rng::getHexString(ProxyAccessTokenLengthBytes);
     return _proxyAccess;
 }
 
 void ClientSession::handleTileInvalidation(const std::string& message,
-    const std::shared_ptr<DocumentBroker>& docBroker)
+                                           const std::shared_ptr<DocumentBroker>& docBroker)
 {
     docBroker->invalidateTiles(message, getCanonicalViewId());
 
     // Skip requesting new tiles if we don't have client visible area data yet.
-    if(!_clientVisibleArea.hasSurface() ||
-       _tileWidthPixel == 0 || _tileHeightPixel == 0 ||
-       _tileWidthTwips == 0 || _tileHeightTwips == 0 ||
-       (_clientSelectedPart == -1 && !_isTextDocument))
+    if (!_clientVisibleArea.hasSurface() || _tileWidthPixel == 0 || _tileHeightPixel == 0 ||
+        _tileWidthTwips == 0 || _tileHeightTwips == 0 ||
+        (_clientSelectedPart == -1 && !_isTextDocument))
     {
         LOG_TRC("No visible area received yet - skip invalidation");
         return;
     }
 
     // While saving / shutting down we can get big invalidatiions: ignore them
-    if (isCloseFrame()) {
+    if (isCloseFrame())
+    {
         LOG_TRC("Session [" << getId() << "] ignoring invalidation during close: '" << message);
         return;
     }
@@ -3072,64 +3067,64 @@ void ClientSession::handleTileInvalidation(const std::string& message,
     TileWireId wireId = 0;
     Util::Rectangle invalidateRect = TileCache::parseInvalidateMsg(message, part, mode, wireId);
 
-    constexpr SplitPaneName panes[4] = {
-        TOPLEFT_PANE,
-        TOPRIGHT_PANE,
-        BOTTOMLEFT_PANE,
-        BOTTOMRIGHT_PANE
-    };
+    constexpr SplitPaneName panes[4] = { TOPLEFT_PANE, TOPRIGHT_PANE, BOTTOMLEFT_PANE,
+                                         BOTTOMRIGHT_PANE };
     Util::Rectangle paneRects[4];
     int numPanes = 0;
-    for(int i = 0; i < 4; ++i)
+    for (int i = 0; i < 4; ++i)
     {
-        if(!isSplitPane(panes[i]))
+        if (!isSplitPane(panes[i]))
             continue;
 
         Util::Rectangle rect = getNormalizedVisiblePaneArea(panes[i]);
-        if (rect.intersects(invalidateRect)) {
+        if (rect.intersects(invalidateRect))
+        {
             paneRects[numPanes++] = rect;
         }
     }
 
     // We can ignore the invalidation if it's outside of all split-panes.
-    if(!numPanes)
+    if (!numPanes)
         return;
 
-    if( part == -1 ) // If no part is specified we use the part used by the client
+    if (part == -1) // If no part is specified we use the part used by the client
         part = _clientSelectedPart;
 
     CanonicalViewId canonicalViewId = getCanonicalViewId();
 
     std::vector<TileDesc> invalidTiles;
-    if((part == _clientSelectedPart && mode == _clientSelectedMode) || _isTextDocument)
+    if ((part == _clientSelectedPart && mode == _clientSelectedMode) || _isTextDocument)
     {
-        for(int paneIdx = 0; paneIdx < numPanes; ++paneIdx)
+        for (int paneIdx = 0; paneIdx < numPanes; ++paneIdx)
         {
             const Util::Rectangle& normalizedVisArea = paneRects[paneIdx];
-            int lastVertTile = std::ceil(normalizedVisArea.getBottom() / static_cast<double>(_tileHeightTwips));
-            int lastHoriTile = std::ceil(normalizedVisArea.getRight() / static_cast<double>(_tileWidthTwips));
+            int lastVertTile =
+                std::ceil(normalizedVisArea.getBottom() / static_cast<double>(_tileHeightTwips));
+            int lastHoriTile =
+                std::ceil(normalizedVisArea.getRight() / static_cast<double>(_tileWidthTwips));
 
             // Iterate through visible tiles
-            for(int i = normalizedVisArea.getTop() / _tileHeightTwips; i <= lastVertTile; ++i)
+            for (int i = normalizedVisArea.getTop() / _tileHeightTwips; i <= lastVertTile; ++i)
             {
-                for(int j = normalizedVisArea.getLeft() / _tileWidthTwips; j <= lastHoriTile; ++j)
+                for (int j = normalizedVisArea.getLeft() / _tileWidthTwips; j <= lastHoriTile; ++j)
                 {
                     // Find tiles affected by invalidation
-                    Util::Rectangle tileRect (j * _tileWidthTwips, i * _tileHeightTwips, _tileWidthTwips, _tileHeightTwips);
-                    if(invalidateRect.intersects(tileRect))
+                    Util::Rectangle tileRect(j * _tileWidthTwips, i * _tileHeightTwips,
+                                             _tileWidthTwips, _tileHeightTwips);
+                    if (invalidateRect.intersects(tileRect))
                     {
-                        TileDesc desc(canonicalViewId, part, mode,
-                                      _tileWidthPixel, _tileHeightPixel,
-                                      j * _tileWidthTwips, i * _tileHeightTwips,
+                        TileDesc desc(canonicalViewId, part, mode, _tileWidthPixel,
+                                      _tileHeightPixel, j * _tileWidthTwips, i * _tileHeightTwips,
                                       _tileWidthTwips, _tileHeightTwips, -1, 0, -1);
 
                         bool dup = false;
                         // Check we don't have duplicates
-                        for (const auto &it : invalidTiles)
+                        for (const auto& it : invalidTiles)
                         {
                             if (it == desc)
                             {
-                                LOG_TRC("Duplicate tile skipped from invalidation " << desc.debugName());
+                                LOG_TRC("Duplicate tile skipped from invalidation "
+                                        << desc.debugName());
                                 dup = true;
                                 break;
                             }
@@ -3154,7 +3149,7 @@ void ClientSession::handleTileInvalidation(const std::string& message,
         }
     }
 
-    if(!invalidTiles.empty())
+    if (!invalidTiles.empty())
     {
         TileCombined tileCombined = TileCombined::create(invalidTiles);
         tileCombined.setCanonicalViewId(canonicalViewId);
@@ -3186,22 +3181,24 @@ Util::Rectangle ClientSession::getNormalizedVisiblePaneArea(const SplitPaneName 
         return paneName == BOTTOMRIGHT_PANE ? normalizedVisArea : Util::Rectangle();
 
     int freeStartX = normalizedVisArea.getLeft() + _splitX;
-    int freeStartY = normalizedVisArea.getTop()  + _splitY;
+    int freeStartY = normalizedVisArea.getTop() + _splitY;
     int freeWidth = normalizedVisArea.getWidth() - _splitX;
     int freeHeight = normalizedVisArea.getHeight() - _splitY;
 
     switch (paneName)
     {
-    case BOTTOMRIGHT_PANE:
-        return Util::Rectangle(freeStartX, freeStartY, freeWidth, freeHeight);
-    case TOPLEFT_PANE:
-        return (_splitX && _splitY) ? Util::Rectangle(0, 0, _splitX, _splitY) : Util::Rectangle();
-    case TOPRIGHT_PANE:
-        return _splitY ? Util::Rectangle(freeStartX, 0, freeWidth, _splitY) : Util::Rectangle();
-    case BOTTOMLEFT_PANE:
-        return _splitX ? Util::Rectangle(0, freeStartY, _splitX, freeHeight) : Util::Rectangle();
-    default:
-        assert(false && "Unknown split-pane name");
+        case BOTTOMRIGHT_PANE:
+            return Util::Rectangle(freeStartX, freeStartY, freeWidth, freeHeight);
+        case TOPLEFT_PANE:
+            return (_splitX && _splitY) ? Util::Rectangle(0, 0, _splitX, _splitY)
+                                        : Util::Rectangle();
+        case TOPRIGHT_PANE:
+            return _splitY ? Util::Rectangle(freeStartX, 0, freeWidth, _splitY) : Util::Rectangle();
+        case BOTTOMLEFT_PANE:
+            return _splitX ? Util::Rectangle(0, freeStartY, _splitX, freeHeight)
+                           : Util::Rectangle();
+        default:
+            assert(false && "Unknown split-pane name");
     }
 
     return Util::Rectangle();
@@ -3211,15 +3208,11 @@ bool ClientSession::isTileInsideVisibleArea(const TileDesc& tile) const
 {
     if (!_splitX && !_splitY)
     {
-        return tile.intersects( _clientVisibleArea );
+        return tile.intersects(_clientVisibleArea);
     }
 
-    constexpr SplitPaneName panes[4] = {
-        TOPLEFT_PANE,
-        TOPRIGHT_PANE,
-        BOTTOMLEFT_PANE,
-        BOTTOMRIGHT_PANE
-    };
+    constexpr SplitPaneName panes[4] = { TOPLEFT_PANE, TOPRIGHT_PANE, BOTTOMLEFT_PANE,
+                                         BOTTOMRIGHT_PANE };
 
     for (int i = 0; i < 4; ++i)
     {
@@ -3227,7 +3220,7 @@ bool ClientSession::isTileInsideVisibleArea(const TileDesc& tile) const
             continue;
 
         const Util::Rectangle paneRect = getNormalizedVisiblePaneArea(panes[i]);
-        if( tile.intersects( paneRect ) )
+        if (tile.intersects(paneRect))
             return true;
     }
 
