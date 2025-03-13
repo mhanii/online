@@ -27,6 +27,7 @@
 #include "Util.hpp"
 
 class DocumentBroker;
+class AIModelOrchestrator;
 
 /// Represents a session to a COOL client, in the WSD process.
 class ClientSession final : public Session
@@ -470,6 +471,12 @@ private:
     bool _sentBrowserSetting;
 
     Poco::SharedPtr<Poco::JSON::Object> _browserSettingsJSON;
+
+    // AI Model Orchestrator for this session
+    std::shared_ptr<AIModelOrchestrator> _modelOrchestrator;
+
+    // Handle model commands
+    bool handleModelCommand(const std::string& command);
 };
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

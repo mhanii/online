@@ -23,8 +23,7 @@ public:
      * @param jsonFilePath Path to the JSON file containing mock responses
      * @return std::string The mock response as a JSON string
      */
-    static std::string getMockResponse(const std::string& modelName, const std::string& prompt,
-                                       const std::string& jsonFilePath)
+    static std::string getMockResponse(const std::string& jsonFilePath)
     {
         try
         {
@@ -38,6 +37,7 @@ public:
             // Parse the JSON file
             std::string jsonContent((std::istreambuf_iterator<char>(file)),
                                     std::istreambuf_iterator<char>());
+
             file.close();
 
             Poco::JSON::Parser parser;
@@ -46,79 +46,22 @@ public:
 
             // Extract the responses array
             Poco::JSON::Array::Ptr responses = rootObj->getArray("responses");
-
             // Find a matching response
             std::string responseStr;
-            bool found = false;
 
-            // First try to find an exact match
-            for (size_t i = 0; i < responses->size(); i++)
-            {
-                Poco::JSON::Object::Ptr respObj = responses->getObject(i);
-                if (respObj->getValue<std::string>("model") == modelName &&
-                    respObj->getValue<std::string>("prompt") == prompt)
-                {
-                    // Found an exact match
-                    Poco::JSON::Object::Ptr response = respObj->getObject("response");
-                    std::ostringstream oss;
-                    response->stringify(oss);
-                    responseStr = oss.str();
-                    found = true;
-                    break;
-                }
-            }
 
-            // If no exact match, try to find a match for the model with default prompt
-            if (!found)
-            {
-                for (size_t i = 0; i < responses->size(); i++)
-                {
-                    Poco::JSON::Object::Ptr respObj = responses->getObject(i);
-                    if (respObj->getValue<std::string>("model") == modelName &&
-                        respObj->getValue<std::string>("prompt") == "*")
-                    {
-                        // Found a model match with default prompt
-                        Poco::JSON::Object::Ptr response = respObj->getObject("response");
-                        std::ostringstream oss;
-                        response->stringify(oss);
-                        responseStr = oss.str();
-                        found = true;
-                        break;
-                    }
-                }
-            }
 
-            // If still no match, use the default response
-            if (!found)
-            {
-                for (size_t i = 0; i < responses->size(); i++)
-                {
-                    Poco::JSON::Object::Ptr respObj = responses->getObject(i);
-                    if (respObj->getValue<std::string>("model") == "default" &&
-                        respObj->getValue<std::string>("prompt") == "*")
-                    {
-                        // Found the default response
-                        Poco::JSON::Object::Ptr response = respObj->getObject("response");
-                        std::ostringstream oss;
-                        response->stringify(oss);
-                        responseStr = oss.str();
-                        found = true;
-                        break;
-                    }
-                }
-            }
+            Poco::JSON::Object::Ptr respObj = responses->getObject(0);
 
-            if (!found)
-            {
-                // If we still don't have a response, create a generic one
-                return createGenericResponse(modelName, prompt);
-            }
+            std::ostringstream oss;
+            respObj->stringify(oss);
+            responseStr = oss.str();
 
             return responseStr;
         }
         catch (const std::exception& e)
         {
-            return createErrorResponse(std::string("Error processing mock response: ") + e.what());
+            return createErrorResponse(std::string("Error processing mock respo3nse: ") + e.what());
         }
     }
 

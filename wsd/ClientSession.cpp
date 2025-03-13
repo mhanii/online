@@ -49,6 +49,7 @@
 #include <net/HttpHelper.hpp>
 #include <wopi/StorageConnectionManager.hpp>
 #include <remote/RController.hpp>
+#include "remote/AIModelOrchestrator.hpp"
 
 using namespace COOLProtocol;
 
@@ -557,22 +558,9 @@ bool ClientSession::_handleInput(const char* buffer, int length)
     // Check if this is a model command
     if (tokens.equals(0, "model"))
     {
-        // Get or create the RController for this session
-        std::shared_ptr<RController> controller = RController::getForSession(getId());
-        if (!controller)
-        {
-            controller = RController::createForSession(client_from_this());
-            if (!controller)
-            {
-                LOG_ERR("Failed to create RController for session " << getId());
-                return false;
-            }
-        }
-
-        // Forward the command to the RController
-        // The RController will handle thread safety internally
-        std::cout << "Forwarding command to RController" << std::endl;
-        return controller->executeCommand(buffer, length);
+        // Use the full command text rather than just first line
+        std::string commandText(buffer, length);
+        return handleModelCommand(commandText);
     }
 
     if (tokens.equals(0, "DEBUG"))
@@ -3316,6 +3304,68 @@ std::string ClientSession::processSVGContent(const std::string& svg)
 std::string ClientSession::getIsAdminUserStatus() const
 {
     return getIsAdminUser().has_value() ? (getIsAdminUser().value() ? "true" : "false") : "null";
+}
+
+bool ClientSession::handleModelCommand(const std::string& command)
+{
+    LOG_INF("Handling model command");
+
+    // Extract the prompt from the command
+    std::string prompt;
+    size_t promptStartPos = command.find("model");
+
+    if (promptStartPos != std::string::npos) {
+        // Skip "model" and any whitespace
+        promptStartPos += 5; // "model" is 5 characters
+
+        // Skip any whitespace after "model"
+        while (promptStartPos < command.length() && std::isspace(command[promptStartPos])) {
+            promptStartPos++;
+        }
+
+        // Extract the rest as the prompt
+        if (promptStartPos < command.length()) {
+            prompt = command.substr(promptStartPos);
+        }
+    }
+
+    if (prompt.empty()) {
+        sendTextFrame("error: cmd=model kind=empty_prompt");
+        return false;
+    }
+
+    // Get or create the AIModelOrchestrator
+    if (!_modelOrchestrator) {
+        _modelOrchestrator = std::make_shared<AIModelOrchestrator>(client_from_this());
+        if (!_modelOrchestrator) {
+            LOG_ERR("Failed to create AIModelOrchestrator for session " << getId());
+            return false;
+        }
+        LOG_INF("Created new AIModelOrchestrator for session " << getId());
+    }
+
+    // Process the model request
+    return _modelOrchestrator->processModelRequest(prompt,
+        [this](const std::string& commands, const std::string& snippet, const std::string& conversation) {
+            (void)commands;
+            // Create a JSON response with conversation and snippet
+            Poco::JSON::Object responseObj;
+            if (!conversation.empty()) {
+                responseObj.set("conversation", conversation);
+            }
+            if (!snippet.empty()) {
+                responseObj.set("snippet", snippet);
+            }
+
+            // Convert the JSON object to a string
+            std::ostringstream oss;
+            responseObj.stringify(oss);
+            std::string jsonResponse = oss.str();
+
+            // Send the response back to the client
+            std::string formattedResponse = "modelresponse success " + jsonResponse;
+            sendTextFrame(formattedResponse);
+        });
 }
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

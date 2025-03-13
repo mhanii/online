@@ -174,7 +174,12 @@ coolwsd_sources = common/Crypto.cpp \
                   wsd/wopi/WopiProxy.cpp \
                   wsd/wopi/WopiStorage.cpp \
                   remote/RController.cpp \
-                  remote/ModelApiClient.cpp
+                  remote/AIModelOrchestrator.cpp \
+                  remote/LLMProviderManager.cpp \
+                  remote/GeminiProvider.cpp \
+                  remote/PromptLayer.cpp \
+                  remote/CompletionLayer.cpp \
+                  remote/ActionLayer.cpp
 
 coolwsd_SOURCES = $(coolwsd_sources) \
                   $(shared_sources) \
@@ -454,7 +459,13 @@ kit_headers = kit/ChildSession.hpp \
 remote_headers = remote/RemoteCommand.hpp \
                  remote/IRemoteController.hpp \
                  remote/RController.hpp \
-                 remote/ModelApiClient.hpp
+                 remote/AIModelOrchestrator.hpp \
+                 remote/LLMProvider.hpp \
+                 remote/LLMProviderManager.hpp \
+                 remote/GeminiProvider.hpp \
+                 remote/PromptLayer.hpp \
+                 remote/CompletionLayer.hpp \
+                 remote/ActionLayer.hpp
 
 noinst_HEADERS = $(wsd_headers) $(shared_headers) $(kit_headers) $(remote_headers) \
                  tools/COOLWebSocket.hpp \

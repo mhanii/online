@@ -184,3 +184,367 @@ button#left.has-img > img {
 [data-theme='dark'] button#unselect_current.has-img > img {
 	filter: invert(.9)
 }
+
+/* ChatSidebar and ModelSidebar button styles */
+/* These selectors are specific enough to override the general button styles */
+
+/* Collapse button */
+.ChatSidebar-collapse-btn,
+.ModelSidebar-collapse-btn {
+	background: none !important;
+	border: none !important;
+	font-size: 16px !important;
+	line-height: 1 !important;
+	padding: 4px !important;
+	cursor: pointer !important;
+	color: #666 !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	width: 28px !important;
+	height: 28px !important;
+	border-radius: 50% !important;
+	min-width: unset !important;
+	margin: 0 !important;
+	box-sizing: border-box !important;
+	transition: all 0.2s ease !important;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+.ChatSidebar-collapse-btn:hover,
+.ModelSidebar-collapse-btn:hover {
+	color: #000 !important;
+	background-color: rgba(0, 0, 0, 0.05) !important;
+	transform: scale(1.05) !important;
+	box-shadow: 0 2px 5px rgba(0,0,0,0.15) !important;
+}
+
+/* Action buttons */
+.ModelSidebar-action-btn {
+	background-color: transparent !important;
+	border: none !important;
+	cursor: pointer !important;
+	padding: 6px !important;
+	border-radius: 8px !important;
+	color: #5f6368 !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	transition: all 0.2s ease !important;
+	min-width: unset !important;
+	height: auto !important;
+	margin: 0 4px !important;
+	position: relative !important;
+	overflow: hidden !important;
+}
+
+.ModelSidebar-action-btn:hover {
+	background-color: #f0f0f0 !important;
+	transform: translateY(-1px) !important;
+	color: #1a73e8 !important;
+}
+
+.ModelSidebar-action-btn:active {
+	transform: translateY(1px) !important;
+}
+
+.ModelSidebar-action-btn::after {
+	content: '' !important;
+	position: absolute !important;
+	top: 50% !important;
+	left: 50% !important;
+	width: 5px !important;
+	height: 5px !important;
+	background: rgba(26, 115, 232, 0.3) !important;
+	opacity: 0 !important;
+	border-radius: 100% !important;
+	transform: scale(1, 1) translate(-50%, -50%) !important;
+	transform-origin: 50% 50% !important;
+}
+
+.ModelSidebar-action-btn:hover::after {
+	animation: ripple 0.6s ease-out !important;
+}
+
+@keyframes ripple {
+	0% {
+		transform: scale(0, 0) translate(-50%, -50%);
+		opacity: 0.5;
+	}
+	100% {
+		transform: scale(20, 20) translate(-50%, -50%);
+		opacity: 0;
+	}
+}
+
+/* Send button */
+.ModelSidebar-send-btn {
+	background: linear-gradient(135deg, #324b6b80, #4285f49e) !important;
+	border: none !important;
+	cursor: pointer !important;
+	padding: 6px !important;
+	border-radius: 15% !important;
+	color: white !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	transition: all 0.2s ease !important;
+	min-width: unset !important;
+	width: 25px !important;
+	height: 25px !important;
+	margin: 0 !important;
+	box-shadow: 0 2px 5px rgba(26, 115, 232, 0.3) !important;
+	position: relative !important;
+	overflow: hidden !important;
+}
+
+.ModelSidebar-send-btn:hover {
+	transform: scale(1.05) !important;
+	box-shadow: 0 3px 8px rgba(26, 115, 232, 0.4) !important;
+}
+
+.ModelSidebar-send-btn:active {
+	transform: scale(0.95) !important;
+}
+
+.ModelSidebar-send-btn::after {
+	content: '' !important;
+	position: absolute !important;
+	top: 50% !important;
+	left: 50% !important;
+	width: 5px !important;
+	height: 5px !important;
+	background: rgba(255, 255, 255, 0.5) !important;
+	opacity: 0 !important;
+	border-radius: 100% !important;
+	transform: scale(1, 1) translate(-50%, -50%) !important;
+	transform-origin: 50% 50% !important;
+}
+
+.ModelSidebar-send-btn:hover::after {
+	animation: send-ripple 0.6s ease-out !important;
+}
+
+@keyframes send-ripple {
+	0% {
+		transform: scale(0, 0) translate(-50%, -50%);
+		opacity: 0.8;
+	}
+	100% {
+		transform: scale(20, 20) translate(-50%, -50%);
+		opacity: 0;
+	}
+}
+
+.ModelSidebar-send-btn svg {
+	filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2)) !important;
+	transform: translateX(1px) !important; /* Slight adjustment for visual balance */
+}
+
+/* Copy, Stop, and Apply buttons */
+.ModelSidebar-copy-button {
+	background: linear-gradient(to bottom, #ffffff, #f5f5f5) !important;
+	border: 1px solid #dadce0 !important;
+	border-radius: 4px !important;
+	cursor: pointer !important;
+	padding: 0px 4px !important;
+	font-size: 10px !important;
+	color: #5f6368 !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	transition: all 0.2s ease !important;
+	min-height: 12px !important;
+	height: 20px !important;
+	min-width: unset !important;
+	margin: 0 2px !important;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.ModelSidebar-copy-button:hover {
+	background: linear-gradient(to bottom, #ffffff, #e8f0fe) !important;
+	border-color: #c6dafc !important;
+	color: #1a73e8 !important;
+	box-shadow: 0 1px 3px rgba(26, 115, 232, 0.2) !important;
+}
+
+.ModelSidebar-stop-button {
+	background: linear-gradient(to bottom, #ffffff, #fee8e6) !important;
+	border: 1px solid #fadad9 !important;
+	border-radius: 4px !important;
+	cursor: pointer !important;
+	padding: 0px 4px !important;
+	font-size: 10px !important;
+	color: #d93025 !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	transition: all 0.2s ease !important;
+	min-height: 12px !important;
+	height: 20px !important;
+	min-width: unset !important;
+	margin: 0 2px !important;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.ModelSidebar-stop-button:hover {
+	background: linear-gradient(to bottom, #ffffff, #fad2cf) !important;
+	border-color: #f6bbb8 !important;
+	box-shadow: 0 1px 3px rgba(217, 48, 37, 0.2) !important;
+}
+
+.ModelSidebar-apply-button {
+	background: linear-gradient(135deg, #4285f4, #1a73e8) !important;
+	border: none !important;
+	border-radius: 4px !important;
+	cursor: pointer !important;
+	padding: 0px 4px !important;
+	font-size: 10px !important;
+	color: white !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	transition: all 0.2s ease !important;
+	min-height: 12px !important;
+	height: 20px !important;
+	min-width: unset !important;
+	margin: 0 2px !important;
+	box-shadow: 0 1px 2px rgba(26, 115, 232, 0.3) !important;
+}
+
+.ModelSidebar-apply-button:hover {
+	background: linear-gradient(135deg, #5a95f5, #2b7de9) !important;
+	box-shadow: 0 2px 4px rgba(26, 115, 232, 0.4) !important;
+	transform: translateY(-1px) !important;
+}
+
+/* Special case for collapsed sidebar button */
+#ChatSidebar-dock-wrapper.collapsed .ChatSidebar-collapse-btn {
+	position: absolute !important;
+	left: 0 !important;
+	top: 0 !important;
+	transform: none !important;
+	background: linear-gradient(135deg, #ffffff, #f5f5f5) !important;
+	box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15) !important;
+	border-radius: 0 8px 8px 0 !important;
+	width: 24px !important;
+	height: 40px !important;
+	z-index: 1011 !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+	cursor: pointer !important;
+	pointer-events: auto !important;
+}
+
+#ChatSidebar-dock-wrapper.collapsed .ChatSidebar-collapse-btn:hover {
+	background: linear-gradient(135deg, #ffffff, #e8f0fe) !important;
+	box-shadow: 3px 0 10px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Additional ChatSidebar button styles */
+.ChatSidebar-container .input-box-buttons .copy-button,
+.ChatSidebar-container .input-box-buttons .stop-button {
+	width: 16px !important;
+	height: 16px !important;
+	border-radius: 3px !important;
+	background-color: #f5f8fc !important;
+	border: 1px solid #ddd !important;
+	cursor: pointer !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	transition: background-color 0.2s ease !important;
+	opacity: 0.8 !important;
+	min-width: unset !important;
+	margin: 0 2px !important;
+	padding: 0 !important;
+	box-sizing: content-box !important;
+	line-height: 1 !important;
+	vertical-align: middle !important;
+}
+
+.ChatSidebar-container .input-box-buttons .copy-button:hover,
+.ChatSidebar-container .input-box-buttons .stop-button:hover {
+	background-color: #e8f0f8 !important;
+	opacity: 1 !important;
+}
+
+.ChatSidebar-container .input-box-buttons .copy-button {
+	color: #4a86e8 !important;
+}
+
+.ChatSidebar-container .input-box-buttons .stop-button {
+	color: #e74c3c !important;
+}
+
+.ChatSidebar-container .input-box-buttons .copy-button::before {
+	content: '📋' !important;
+	font-size: 10px !important;
+}
+
+.ChatSidebar-container .input-box-buttons .stop-button::before {
+	content: '■' !important;
+	font-size: 8px !important;
+}
+
+.ChatSidebar-container .input-input-container .input-send-btn {
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	min-width: 60px !important;
+	height: 28px !important;
+	border: none !important;
+	background-color: transparent !important;
+	cursor: pointer !important;
+	color: #78a9f2 !important;
+	padding: 0 8px !important;
+	margin: 0 8px 8px 0 !important;
+	border-radius: 14px !important;
+	transition: background-color 0.2s ease, transform 0.2s ease !important;
+	font-size: 12px !important;
+	gap: 4px !important;
+	box-sizing: content-box !important;
+	line-height: 1 !important;
+	vertical-align: middle !important;
+}
+
+.ChatSidebar-container .input-input-container .input-send-btn:hover {
+	background-color: rgba(120, 169, 242, 0.1) !important;
+	transform: scale(1.05) !important;
+}
+
+.ChatSidebar-container .input-input-container .input-send-btn:active {
+	background-color: rgba(120, 169, 242, 0.2) !important;
+	transform: scale(0.98) !important;
+}
+
+.ChatSidebar-container .input-input-container .input-send-btn:disabled {
+	opacity: 0.7 !important;
+	cursor: not-allowed !important;
+	transform: none !important;
+}
+
+.ChatSidebar-container .input-input-container .input-send-btn:disabled svg {
+	display: none !important;
+}
+
+.ChatSidebar-container .input-input-container .input-send-btn:disabled::after {
+	content: '' !important;
+	display: inline-block !important;
+	width: 14px !important;
+	height: 14px !important;
+	border: 2px solid rgba(120, 169, 242, 0.3) !important;
+	border-top: 2px solid #78a9f2 !important;
+	border-radius: 50% !important;
+	animation: spin 1s linear infinite !important;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+.input-input-container .input-send-btn svg {
+	width: 12px;
+	height: 12px;
+}

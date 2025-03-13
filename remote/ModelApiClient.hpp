@@ -27,7 +27,7 @@ public:
     // Send a model request to the API
     bool sendModelRequest(const std::string& modelName,
                          const std::vector<std::string>& params,
-                         std::function<void(const std::string&)> responseCallback);
+                         std::function<void(const std::string&, const std::string&, const std::string&)> responseCallback);
 
     // Cancel any pending requests
     void cancelPendingRequests();
@@ -42,15 +42,27 @@ private:
     std::shared_ptr<ClientSession> clientSession;
     std::string apiEndpoint;
     bool isRequestPending;
+    std::string geminiApiKey;
+
+    // Load the Gemini API key from configuration
+    void loadGeminiApiKey();
+
+    // Send a request to the Gemini API
+    bool sendGeminiRequest(const std::string& prompt,
+                          std::function<void(const std::string&, const std::string&, const std::string&)> callback);
+
+    // Process a response from the Gemini API
+    void processGeminiResponse(const std::string& response,
+                              std::function<void(const std::string&, const std::string&, const std::string&)> callback);
 
     // Internal method to handle API responses
     void handleApiResponse(const std::string& response,
-                           std::function<void(const std::string&)> callback);
+                           std::function<void(const std::string&, const std::string&, const std::string&)> callback);
 
     // Perform the actual HTTP request
     bool performHttpRequest(const std::string& url,
                            const std::string& payload,
-                           std::function<void(const std::string&)> callback);
+                           std::function<void(const std::string&, const std::string&, const std::string&)> callback);
 
     // Check if an endpoint is available
     bool isEndpointAvailable(const std::string& url);
